@@ -104,7 +104,7 @@ const VALID_TYPES: TransactionType[] = ["EXPENSE", "INCOME", "TRANSFER", "EXCHAN
 
 export function parseTransactionsCsv(text: string): { rows: TransactionCsvRow[]; errors: string[] } {
   const table = parseCsv(text);
-  if (table.length === 0) return { rows: [], errors: ["Empty file"] };
+  if (table.length === 0) return { rows: [], errors: ["빈 파일이에요."] };
 
   const header = table[0].map((h) => h.trim().toLowerCase());
   const idx = (name: string) => header.indexOf(name);
@@ -120,23 +120,23 @@ export function parseTransactionsCsv(text: string): { rows: TransactionCsvRow[];
     const typeRaw = get("transaction_type").toUpperCase() as TransactionType;
 
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      errors.push(`Row ${i + 1}: invalid or missing date`);
+      errors.push(`${i + 1}번째 줄: 날짜가 없거나 형식이 올바르지 않아요`);
       continue;
     }
     const amountNum = Number(amountRaw);
     if (!amountRaw || isNaN(amountNum)) {
-      errors.push(`Row ${i + 1}: invalid amount`);
+      errors.push(`${i + 1}번째 줄: 금액이 올바르지 않아요`);
       continue;
     }
     if (currency !== "AUD" && currency !== "KRW") {
-      errors.push(`Row ${i + 1}: unsupported currency "${currency}"`);
+      errors.push(`${i + 1}번째 줄: 지원하지 않는 통화예요 ("${currency}")`);
       continue;
     }
     const transactionType = VALID_TYPES.includes(typeRaw) ? typeRaw : "EXPENSE";
 
     rows.push({
       date,
-      merchant: get("merchant") || "Unknown",
+      merchant: get("merchant") || "알 수 없음",
       amountMinor: toMinorUnits(Math.abs(amountNum), currency),
       currency,
       transactionType,
@@ -175,7 +175,7 @@ const VALID_ACCOUNT_TYPES: AccountType[] = ["CHECKING", "SAVINGS", "CASH", "CRED
 
 export function parseAccountsCsv(text: string): { rows: AccountCsvRow[]; errors: string[] } {
   const table = parseCsv(text);
-  if (table.length === 0) return { rows: [], errors: ["Empty file"] };
+  if (table.length === 0) return { rows: [], errors: ["빈 파일이에요."] };
   const header = table[0].map((h) => h.trim().toLowerCase());
   const idx = (name: string) => header.indexOf(name);
   const rows: AccountCsvRow[] = [];
@@ -189,11 +189,11 @@ export function parseAccountsCsv(text: string): { rows: AccountCsvRow[]; errors:
     const balanceRaw = get("balance");
     const balanceNum = Number(balanceRaw);
     if (!name) {
-      errors.push(`Row ${i + 1}: missing name`);
+      errors.push(`${i + 1}번째 줄: 이름이 없어요`);
       continue;
     }
     if (!balanceRaw || isNaN(balanceNum)) {
-      errors.push(`Row ${i + 1}: invalid balance`);
+      errors.push(`${i + 1}번째 줄: 잔고가 올바르지 않아요`);
       continue;
     }
     const typeRaw = get("type").toUpperCase() as AccountType;

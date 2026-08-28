@@ -1,7 +1,7 @@
 {
   "name": "Money OS",
   "short_name": "Money OS",
-  "description": "Know exactly what you can spend, right now.",
+  "description": "지금 쓸 수 있는 돈이 얼마인지, 정확하게 확인하세요.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf9f7",

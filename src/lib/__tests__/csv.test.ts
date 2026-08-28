@@ -62,7 +62,7 @@ describe("transactions CSV round trip", () => {
       amountMinor: toMinorUnits(83.25, "AUD"),
       currency: "AUD",
       transactionType: "EXPENSE",
-      categoryName: "Groceries",
+      categoryName: "식비",
       accountName: "Everyday",
       memo: "weekly shop",
     });

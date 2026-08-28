@@ -19,7 +19,7 @@ export function PlannedIncomeFormSheet({
   editing: PlannedIncome | null;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? "Edit Planned Income" : "Add Planned Income"}>
+    <Sheet open={open} onClose={onClose} title={editing ? "예정 수입 수정" : "예정 수입 추가"}>
       {open && <PlannedIncomeForm key={editing?.id ?? "new"} editing={editing} onDone={onClose} />}
     </Sheet>
   );
@@ -58,12 +58,12 @@ function PlannedIncomeForm({ editing, onDone }: { editing: PlannedIncome | null;
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Label>Name *</Label>
-        <Input placeholder="e.g. Salary" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Label>이름 *</Label>
+        <Input placeholder="예: 급여" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div>
-          <Label>Amount *</Label>
+          <Label>금액 *</Label>
           <Input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <Select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)} className="w-24">
@@ -72,17 +72,17 @@ function PlannedIncomeForm({ editing, onDone }: { editing: PlannedIncome | null;
         </Select>
       </div>
       <div>
-        <Label>Expected date</Label>
+        <Label>예상 입금일</Label>
         <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
       </div>
       <div>
-        <Label>Source</Label>
-        <Input placeholder="e.g. Employer" value={source} onChange={(e) => setSource(e.target.value)} />
+        <Label>출처</Label>
+        <Input placeholder="예: 회사" value={source} onChange={(e) => setSource(e.target.value)} />
       </div>
       <label className="flex items-center justify-between rounded-xl border border-border px-3.5 py-3">
         <div>
-          <span className="text-[14px] text-ink">Confirmed</span>
-          <p className="text-[12px] text-ink-muted">Only confirmed income counts toward Available to Spend</p>
+          <span className="text-[14px] text-ink">확정</span>
+          <p className="text-[12px] text-ink-muted">확정된 수입만 지금 쓸 수 있는 돈 계산에 포함돼요</p>
         </div>
         <input
           type="checkbox"
@@ -101,11 +101,11 @@ function PlannedIncomeForm({ editing, onDone }: { editing: PlannedIncome | null;
             }}
             type="button"
           >
-            Delete
+            삭제
           </Button>
         )}
         <Button variant="accent" size="lg" className="flex-1" disabled={!canSave} onClick={handleSave}>
-          {editing ? "Save Changes" : "Add Planned Income"}
+          {editing ? "저장" : "예정 수입 추가"}
         </Button>
       </div>
     </div>

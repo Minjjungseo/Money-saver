@@ -54,13 +54,13 @@ export default function SettingsPage() {
         <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted">
           <ChevronLeft size={19} />
         </Link>
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink">Settings</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight text-ink">설정</h1>
       </div>
 
-      <Section title="General">
+      <Section title="일반">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between rounded-xl bg-surface-muted px-3.5 py-2.5">
-            <span className="text-[13px] text-ink-muted">Base currency</span>
+            <span className="text-[13px] text-ink-muted">기준 통화</span>
             <Select
               value={data.settings.baseCurrency}
               onChange={(e) => updateSettings({ baseCurrency: e.target.value as CurrencyCode })}
@@ -74,54 +74,54 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Reserve">
+      <Section title="남겨둘 돈">
         <ReserveCard />
       </Section>
 
-      <Section title="Categories">
+      <Section title="카테고리">
         <CategoryManager />
       </Section>
 
-      <Section title="Merchant Rules">
+      <Section title="가맹점 규칙">
         <MerchantRulesManager />
       </Section>
 
-      <Section title="Data">
+      <Section title="데이터">
         <div className="flex flex-col gap-2">
           <Button variant="outline" onClick={handleExportJson}>
-            <Download size={15} /> Export all data (JSON)
+            <Download size={15} /> 전체 데이터 내보내기 (JSON)
           </Button>
           <Button variant="outline" onClick={handleExportTransactionsCsv}>
-            <Download size={15} /> Export transactions (CSV)
+            <Download size={15} /> 거래 내역 내보내기 (CSV)
           </Button>
           <Button variant="outline" onClick={handleExportAccountsCsv}>
-            <Download size={15} /> Export accounts (CSV)
+            <Download size={15} /> 계좌 내보내기 (CSV)
           </Button>
           <Button variant="outline" onClick={openImport}>
-            <Upload size={15} /> Import data
+            <Upload size={15} /> 데이터 불러오기
           </Button>
         </div>
       </Section>
 
-      <Section title="Demo Data">
+      <Section title="예시 데이터">
         <div className="flex flex-col gap-2">
           {data.settings.demoDataActive && (
             <Button variant="outline" onClick={clearDemoData}>
-              Clear Demo Data
+              예시 데이터 지우기
             </Button>
           )}
           <Button variant={confirmingReset ? "destructive" : "outline"} onClick={handleReset}>
-            {confirmingReset ? "Tap again to confirm — this deletes everything" : "Reset All Data"}
+            {confirmingReset ? "다시 누르면 모든 데이터가 삭제돼요" : "전체 데이터 초기화"}
           </Button>
           {confirmingReset && (
             <button onClick={() => setConfirmingReset(false)} className="text-[13px] text-ink-muted">
-              Cancel
+              취소
             </button>
           )}
         </div>
       </Section>
 
-      <p className="px-5 pb-6 text-center text-[12px] text-ink-faint">Money OS · your data stays on this device</p>
+      <p className="px-5 pb-6 text-center text-[12px] text-ink-faint">Money OS · 모든 데이터는 이 기기에만 저장돼요</p>
     </div>
   );
 }

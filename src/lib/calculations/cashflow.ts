@@ -68,7 +68,7 @@ export function calculateNetCashFlow(
 
 export interface MonthlyTrendPoint {
   monthKey: string; // yyyy-MM
-  label: string; // "Aug"
+  label: string; // "8월"
   income: number;
   expense: number;
 }
@@ -85,7 +85,7 @@ export function calculateMonthlyTrend(
     const monthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - i, 1);
     points.push({
       monthKey: `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}`,
-      label: monthDate.toLocaleString("en-US", { month: "short" }),
+      label: `${monthDate.getMonth() + 1}월`,
       income: calculateMonthlyIncome(transactions, monthDate, baseCurrency, rates),
       expense: calculateMonthlyExpense(transactions, monthDate, baseCurrency, rates),
     });

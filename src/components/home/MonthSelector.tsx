@@ -15,25 +15,25 @@ export function MonthSelector({
     <div className="flex items-center justify-center gap-4 py-1">
       <button
         onClick={() => onChange(addMonths(month, -1))}
-        aria-label="Previous month"
+        aria-label="이전 달"
         className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
       >
         <ChevronLeft size={18} />
       </button>
       <span className="min-w-[9rem] text-center text-[15px] font-medium text-ink">
-        {format(month, "MMMM yyyy")}
+        {format(month, "yyyy년 M월")}
         {!isCurrent && (
           <button
             onClick={() => onChange(new Date())}
             className="ml-2 align-middle text-[11px] font-medium text-accent"
           >
-            Today
+            오늘
           </button>
         )}
       </span>
       <button
         onClick={() => onChange(addMonths(month, 1))}
-        aria-label="Next month"
+        aria-label="다음 달"
         className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
       >
         <ChevronRight size={18} />

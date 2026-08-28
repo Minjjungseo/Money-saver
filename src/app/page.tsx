@@ -24,7 +24,7 @@ export default function HomePage() {
   const { openManual } = useAddFlow();
 
   if (loading) {
-    return <div className="px-5 py-10 text-center text-sm text-ink-muted">Loading…</div>;
+    return <div className="px-5 py-10 text-center text-sm text-ink-muted">불러오는 중…</div>;
   }
 
   if (data.accounts.length === 0) {
@@ -34,11 +34,11 @@ export default function HomePage() {
         <div className="mt-8">
           <EmptyState
             icon={<Wallet size={28} />}
-            title="No accounts yet"
-            description="Add your first account with its current balance to see what you can spend."
+            title="아직 등록된 계좌가 없어요"
+            description="계좌와 현재 잔고를 등록하면 지금 쓸 수 있는 돈을 볼 수 있어요."
             action={
               <Link href="/accounts">
-                <Button variant="accent">Add an account</Button>
+                <Button variant="accent">계좌 추가</Button>
               </Link>
             }
           />
@@ -72,11 +72,11 @@ export default function HomePage() {
         {metrics.categoryBreakdown.length === 0 ? (
           <div className="mx-5">
             <EmptyState
-              title="No transactions yet."
-              description="Upload your first bank screenshot or add one manually."
+              title="아직 등록된 거래가 없어요."
+              description="은행 거래내역 스크린샷을 올리거나 직접 입력해보세요."
               action={
                 <Button variant="accent" onClick={() => openManual()}>
-                  Add a transaction
+                  거래 추가
                 </Button>
               }
             />
@@ -101,11 +101,11 @@ function Header({ demoActive }: { demoActive: boolean }) {
     <div className="flex items-center justify-between px-5">
       <div className="flex items-center gap-2">
         <span className="text-[15px] font-semibold tracking-tight text-ink">Money OS</span>
-        {demoActive && <Badge tone="warn">Demo data</Badge>}
+        {demoActive && <Badge tone="warn">예시 데이터</Badge>}
       </div>
       <Link
         href="/settings"
-        aria-label="Settings"
+        aria-label="설정"
         className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
       >
         <SettingsIcon size={19} />

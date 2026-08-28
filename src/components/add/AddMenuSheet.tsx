@@ -3,25 +3,26 @@
 import { Camera, PenLine, FileUp } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
+import { NAV_LABELS } from "@/lib/labels";
 
 const OPTIONS = [
   {
     key: "image" as const,
     icon: Camera,
-    title: "Add from Image",
-    description: "Upload a bank screenshot or receipt and let it read the details.",
+    title: "이미지로 추가",
+    description: "은행 거래내역 스크린샷이나 영수증을 올리면 내용을 읽어드려요.",
   },
   {
     key: "manual" as const,
     icon: PenLine,
-    title: "Add Manually",
-    description: "Amount, merchant, category — done in a few seconds.",
+    title: "직접 입력",
+    description: "금액, 사용처, 카테고리만 입력하면 몇 초면 끝나요.",
   },
   {
     key: "import" as const,
     icon: FileUp,
-    title: "Import CSV/JSON",
-    description: "Bring in transactions or accounts from a file.",
+    title: "파일 불러오기",
+    description: "CSV나 JSON 파일에서 거래내역·계좌를 가져와요.",
   },
 ];
 
@@ -35,7 +36,7 @@ export function AddMenuSheet() {
   };
 
   return (
-    <Sheet open={mode === "menu"} onClose={close} title="Add">
+    <Sheet open={mode === "menu"} onClose={close} title={NAV_LABELS.add}>
       <div className="flex flex-col gap-2">
         {OPTIONS.map(({ key, icon: Icon, title, description }) => (
           <button

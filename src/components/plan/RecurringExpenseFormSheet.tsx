@@ -7,16 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
+import { FREQUENCY_LABELS } from "@/lib/labels";
 import type { CurrencyCode, RecurringExpense, RecurringFrequency } from "@/types";
-
-const FREQUENCY_LABELS: Record<RecurringFrequency, string> = {
-  WEEKLY: "Weekly",
-  FORTNIGHTLY: "Fortnightly",
-  MONTHLY: "Monthly",
-  QUARTERLY: "Quarterly",
-  SIX_MONTHLY: "6-Monthly",
-  YEARLY: "Yearly",
-};
 
 export function RecurringExpenseFormSheet({
   open,
@@ -28,7 +20,7 @@ export function RecurringExpenseFormSheet({
   editing: RecurringExpense | null;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? "Edit Recurring Expense" : "Add Recurring Expense"}>
+    <Sheet open={open} onClose={onClose} title={editing ? "정기 지출 수정" : "정기 지출 추가"}>
       {open && <RecurringExpenseForm key={editing?.id ?? "new"} editing={editing} onDone={onClose} />}
     </Sheet>
   );
@@ -75,12 +67,12 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Label>Name *</Label>
-        <Input placeholder="e.g. Rent" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Label>이름 *</Label>
+        <Input placeholder="예: 월세" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div>
-          <Label>Amount *</Label>
+          <Label>금액 *</Label>
           <Input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <Select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)} className="w-24">
@@ -89,7 +81,7 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
         </Select>
       </div>
       <div>
-        <Label>Frequency</Label>
+        <Label>반복 주기</Label>
         <Select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}>
           {(Object.keys(FREQUENCY_LABELS) as RecurringFrequency[]).map((f) => (
             <option key={f} value={f}>
@@ -99,13 +91,13 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
         </Select>
       </div>
       <div>
-        <Label>Next due date</Label>
+        <Label>다음 결제일</Label>
         <Input type="date" value={nextDueDate} onChange={(e) => setNextDueDate(e.target.value)} />
       </div>
       <div>
-        <Label>Category</Label>
+        <Label>카테고리</Label>
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">None</option>
+          <option value="">없음</option>
           {topLevelCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -114,9 +106,9 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
         </Select>
       </div>
       <div>
-        <Label>Account</Label>
+        <Label>계좌</Label>
         <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-          <option value="">None</option>
+          <option value="">없음</option>
           {data.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -126,8 +118,8 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
       </div>
       <label className="flex items-center justify-between rounded-xl border border-border px-3.5 py-3">
         <div>
-          <span className="text-[14px] text-ink">Essential</span>
-          <p className="text-[12px] text-ink-muted">Counted in Available to Spend</p>
+          <span className="text-[14px] text-ink">필수</span>
+          <p className="text-[12px] text-ink-muted">지금 쓸 수 있는 돈 계산에 포함</p>
         </div>
         <input
           type="checkbox"
@@ -146,11 +138,11 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
             }}
             type="button"
           >
-            Delete
+            삭제
           </Button>
         )}
         <Button variant="accent" size="lg" className="flex-1" disabled={!canSave} onClick={handleSave}>
-          {editing ? "Save Changes" : "Add Recurring Expense"}
+          {editing ? "저장" : "정기 지출 추가"}
         </Button>
       </div>
     </div>

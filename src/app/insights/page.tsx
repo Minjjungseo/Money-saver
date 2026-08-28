@@ -33,7 +33,7 @@ export default function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-4 pt-6">
-      <h1 className="px-5 text-[20px] font-semibold tracking-tight text-ink">Insights</h1>
+      <h1 className="px-5 text-[20px] font-semibold tracking-tight text-ink">분석</h1>
       <MonthSelector month={selectedMonth} onChange={setSelectedMonth} />
 
       <div className="mx-5 flex items-start gap-3 rounded-2xl bg-accent-soft px-4 py-3.5 text-[14px] text-ink">

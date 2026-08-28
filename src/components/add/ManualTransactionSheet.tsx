@@ -8,16 +8,8 @@ import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
+import { TRANSACTION_TYPE_LABELS } from "@/lib/labels";
 import type { CurrencyCode, Transaction, TransactionType } from "@/types";
-
-const TYPE_LABELS: Record<TransactionType, string> = {
-  EXPENSE: "Expense",
-  INCOME: "Income",
-  TRANSFER: "Transfer",
-  EXCHANGE: "Exchange",
-  REFUND: "Refund",
-  CASH_WITHDRAWAL: "Cash Withdrawal",
-};
 
 export function ManualTransactionSheet() {
   const { mode, close, editingTransactionId } = useAddFlow();
@@ -26,7 +18,7 @@ export function ManualTransactionSheet() {
   const editing = editingTransactionId ? data.transactions.find((t) => t.id === editingTransactionId) : null;
 
   return (
-    <Sheet open={open} onClose={close} title={editing ? "Edit Transaction" : "Add Transaction"}>
+    <Sheet open={open} onClose={close} title={editing ? "거래 수정" : "거래 추가"}>
       {open && <ManualTransactionForm key={editingTransactionId ?? "new"} editing={editing ?? null} onDone={close} />}
     </Sheet>
   );
@@ -91,7 +83,7 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2">
-        {(Object.keys(TYPE_LABELS) as TransactionType[]).map((t) => (
+        {(Object.keys(TRANSACTION_TYPE_LABELS) as TransactionType[]).map((t) => (
           <button
             key={t}
             onClick={() => setType(t)}
@@ -101,14 +93,14 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
                 : "border-border bg-surface text-ink-muted hover:bg-surface-muted"
             }`}
           >
-            {TYPE_LABELS[t]}
+            {TRANSACTION_TYPE_LABELS[t]}
           </button>
         ))}
       </div>
 
       <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
         <div>
-          <Label>Amount *</Label>
+          <Label>금액 *</Label>
           <Input
             inputMode="decimal"
             placeholder="0.00"
@@ -124,12 +116,12 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
       </div>
 
       <div>
-        <Label>Merchant *</Label>
-        <Input placeholder="e.g. Woolworths" value={merchant} onChange={(e) => setMerchant(e.target.value)} />
+        <Label>사용처 *</Label>
+        <Input placeholder="예: Woolworths" value={merchant} onChange={(e) => setMerchant(e.target.value)} />
       </div>
 
       <div>
-        <Label>Category *</Label>
+        <Label>카테고리 *</Label>
         <Select
           value={categoryId}
           onChange={(e) => {
@@ -137,7 +129,7 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
             setSubcategory("");
           }}
         >
-          <option value="">Select category</option>
+          <option value="">카테고리 선택</option>
           {topLevelCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -148,9 +140,9 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
 
       {subcategories.length > 0 && (
         <div>
-          <Label>Subcategory</Label>
+          <Label>세부 카테고리</Label>
           <Select value={subcategory} onChange={(e) => setSubcategory(e.target.value)}>
-            <option value="">None</option>
+            <option value="">없음</option>
             {subcategories.map((c) => (
               <option key={c.id} value={c.name}>
                 {c.name}
@@ -161,16 +153,16 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
       )}
 
       <details className="group">
-        <summary className="cursor-pointer list-none text-sm font-medium text-accent">More details (optional)</summary>
+        <summary className="cursor-pointer list-none text-sm font-medium text-accent">자세히 입력 (선택)</summary>
         <div className="mt-3 flex flex-col gap-4">
           <div>
-            <Label>Date</Label>
+            <Label>날짜</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <Label>Account</Label>
+            <Label>계좌</Label>
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">None</option>
+              <option value="">없음</option>
               {data.accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -179,7 +171,7 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
             </Select>
           </div>
           <div>
-            <Label>Memo</Label>
+            <Label>메모</Label>
             <Textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
           </div>
         </div>
@@ -188,11 +180,11 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
       <div className="mt-2 flex gap-2">
         {editing && (
           <Button variant="destructive" onClick={handleDelete} type="button">
-            Delete
+            삭제
           </Button>
         )}
         <Button variant="accent" size="lg" className="flex-1" disabled={!canSave} onClick={handleSave}>
-          {editing ? "Save Changes" : "Add Transaction"}
+          {editing ? "저장" : "거래 추가"}
         </Button>
       </div>
     </div>

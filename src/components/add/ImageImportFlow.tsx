@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { ko } from "date-fns/locale";
 import { Camera, Check, Loader2, TriangleAlert } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +12,7 @@ import { useAddFlow } from "@/lib/context/AddFlowContext";
 import { useData } from "@/lib/context/DataContext";
 import { parseTransactionImage } from "@/services/transactionImageParser";
 import { formatMoney, toMajorUnits, toMinorUnits } from "@/lib/money";
+import { TRANSACTION_TYPE_LABELS } from "@/lib/labels";
 import type { CurrencyCode, ParsedTransactionCandidate, TransactionType } from "@/types";
 
 type Step = "upload" | "parsing" | "review" | "done";
@@ -19,15 +21,6 @@ interface EditableCandidate extends ParsedTransactionCandidate {
   included: boolean;
   editing: boolean;
 }
-
-const TYPE_LABELS: Record<TransactionType, string> = {
-  EXPENSE: "Expense",
-  INCOME: "Income",
-  TRANSFER: "Transfer",
-  EXCHANGE: "Exchange",
-  REFUND: "Refund",
-  CASH_WITHDRAWAL: "Cash Withdrawal",
-};
 
 export function ImageImportFlow() {
   const { mode, close } = useAddFlow();
@@ -118,15 +111,14 @@ export function ImageImportFlow() {
   const includedCount = useMemo(() => candidates.filter((c) => c.included).length, [candidates]);
 
   return (
-    <Sheet open={open} onClose={handleClose} title={step === "review" ? "Review Imported Transactions" : "Add from Image"}>
+    <Sheet open={open} onClose={handleClose} title={step === "review" ? "인식된 내역 확인" : "이미지로 추가"}>
       {step === "upload" && (
         <div className="flex flex-col items-center gap-4 py-4 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Camera size={28} />
           </div>
           <p className="text-[14px] text-ink-muted max-w-xs">
-            Upload a bank app screenshot, transaction list, or receipt. We&apos;ll pull out the details for you to
-            confirm before anything is saved.
+            은행 앱 스크린샷, 거래내역, 영수증을 올려주세요. 저장 전에 내용을 확인할 수 있게 보여드릴게요.
           </p>
           <input
             ref={fileInputRef}
@@ -139,7 +131,7 @@ export function ImageImportFlow() {
             }}
           />
           <Button variant="accent" size="lg" onClick={() => fileInputRef.current?.click()}>
-            Choose Image
+            이미지 올리기
           </Button>
         </div>
       )}
@@ -148,10 +140,10 @@ export function ImageImportFlow() {
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           {previewUrl && (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={previewUrl} alt="Uploaded" className="h-32 w-32 rounded-2xl object-cover border border-border" />
+            <img src={previewUrl} alt="업로드한 이미지" className="h-32 w-32 rounded-2xl object-cover border border-border" />
           )}
           <Loader2 size={24} className="animate-spin text-accent" />
-          <p className="text-[14px] text-ink-muted">Reading transactions from your image…</p>
+          <p className="text-[14px] text-ink-muted">이미지에서 거래내역을 읽고 있어요…</p>
         </div>
       )}
 
@@ -161,13 +153,13 @@ export function ImageImportFlow() {
             <div className="flex items-start gap-2 rounded-xl bg-warn-soft px-3.5 py-3 text-[13px] text-warn">
               <TriangleAlert size={16} className="mt-0.5 shrink-0" />
               <span>
-                No Vision API key configured — showing placeholder rows so you can try the flow. Please edit them to
-                match your actual image, or add ANTHROPIC_API_KEY to enable real image reading.
+                이미지 인식 API가 설정되지 않아 예시 항목을 보여드리고 있어요. 실제 이미지 내용에 맞게 직접
+                수정해주시거나, ANTHROPIC_API_KEY를 설정하면 실제 이미지 인식이 켜져요.
               </span>
             </div>
           )}
           {candidates.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink-muted">Nothing readable was found in that image.</p>
+            <p className="py-6 text-center text-sm text-ink-muted">이미지에서 인식된 내용이 없어요.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {candidates.map((c) => (
@@ -183,7 +175,7 @@ export function ImageImportFlow() {
             </div>
           )}
           <Button variant="accent" size="lg" disabled={includedCount === 0} onClick={handleConfirmImport}>
-            Confirm Import ({includedCount})
+            내역에 추가 ({includedCount})
           </Button>
         </div>
       )}
@@ -193,11 +185,9 @@ export function ImageImportFlow() {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Check size={26} />
           </div>
-          <p className="text-[15px] font-medium text-ink">
-            Imported {importedCount} transaction{importedCount === 1 ? "" : "s"}
-          </p>
+          <p className="text-[15px] font-medium text-ink">거래 {importedCount}건을 추가했어요</p>
           <Button variant="secondary" onClick={handleClose}>
-            Done
+            완료
           </Button>
         </div>
       )}
@@ -232,13 +222,13 @@ function CandidateRow({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[13px] text-ink-muted">{format(parseISO(candidate.date), "d MMM")}</p>
-            <Badge tone={candidate.confidence >= 80 ? "accent" : "warn"}>Confidence {candidate.confidence}%</Badge>
+            <p className="text-[13px] text-ink-muted">{format(parseISO(candidate.date), "M월 d일", { locale: ko })}</p>
+            <Badge tone={candidate.confidence >= 80 ? "accent" : "warn"}>인식 정확도 {candidate.confidence}%</Badge>
           </div>
           <p className="text-[15px] font-medium text-ink">{candidate.merchant}</p>
           <div className="flex items-center justify-between">
             <p className="text-[13px] text-ink-muted">
-              {[categoryName, candidate.suggestedSubcategory].filter(Boolean).join(" · ") || "Uncategorized"}
+              {[categoryName, candidate.suggestedSubcategory].filter(Boolean).join(" · ") || "카테고리 없음"}
             </p>
             <p className="text-[14px] font-medium tabular-nums text-ink">
               {formatMoney(candidate.amountMinor, candidate.currency)}
@@ -248,7 +238,7 @@ function CandidateRow({
           {duplicateTx && (
             <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-negative-soft px-2.5 py-1.5 text-[12px] text-negative">
               <TriangleAlert size={13} />
-              Possible duplicate of &quot;{duplicateTx.merchant}&quot; on {format(parseISO(duplicateTx.date), "MMM d")}
+              &quot;{duplicateTx.merchant}&quot; ({format(parseISO(duplicateTx.date), "M월 d일", { locale: ko })})와 중복 가능성
             </div>
           )}
 
@@ -256,18 +246,18 @@ function CandidateRow({
             onClick={() => onChange({ editing: !candidate.editing })}
             className="mt-2 text-[13px] font-medium text-accent"
           >
-            {candidate.editing ? "Hide" : "Edit"}
+            {candidate.editing ? "숨기기" : "수정"}
           </button>
 
           {candidate.editing && (
             <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
               <div>
-                <Label>Merchant</Label>
+                <Label>사용처</Label>
                 <Input value={candidate.merchant} onChange={(e) => onChange({ merchant: e.target.value })} />
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-2">
                 <div>
-                  <Label>Amount</Label>
+                  <Label>금액</Label>
                   <Input
                     inputMode="decimal"
                     value={String(toMajorUnits(candidate.amountMinor, candidate.currency))}
@@ -287,29 +277,29 @@ function CandidateRow({
                 </Select>
               </div>
               <div>
-                <Label>Date</Label>
+                <Label>날짜</Label>
                 <Input type="date" value={candidate.date} onChange={(e) => onChange({ date: e.target.value })} />
               </div>
               <div>
-                <Label>Type</Label>
+                <Label>거래 유형</Label>
                 <Select
                   value={candidate.transactionType}
                   onChange={(e) => onChange({ transactionType: e.target.value as TransactionType })}
                 >
-                  {(Object.keys(TYPE_LABELS) as TransactionType[]).map((t) => (
+                  {(Object.keys(TRANSACTION_TYPE_LABELS) as TransactionType[]).map((t) => (
                     <option key={t} value={t}>
-                      {TYPE_LABELS[t]}
+                      {TRANSACTION_TYPE_LABELS[t]}
                     </option>
                   ))}
                 </Select>
               </div>
               <div>
-                <Label>Category</Label>
+                <Label>카테고리</Label>
                 <Select
                   value={candidate.suggestedCategoryId ?? ""}
                   onChange={(e) => onChange({ suggestedCategoryId: e.target.value || null })}
                 >
-                  <option value="">Uncategorized</option>
+                  <option value="">카테고리 없음</option>
                   {topLevelCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -318,12 +308,12 @@ function CandidateRow({
                 </Select>
               </div>
               <div>
-                <Label>Account</Label>
+                <Label>계좌</Label>
                 <Select
                   value={candidate.suggestedAccountId ?? ""}
                   onChange={(e) => onChange({ suggestedAccountId: e.target.value || null })}
                 >
-                  <option value="">None</option>
+                  <option value="">없음</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}

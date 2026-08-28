@@ -23,14 +23,14 @@ export default function AccountsPage() {
   return (
     <div className="pt-6">
       <div className="flex items-center justify-between px-5">
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink">Accounts</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight text-ink">내 계좌</h1>
         <Button size="sm" variant="accent" onClick={() => { setEditing(null); setFormOpen(true); }}>
-          <Plus size={16} /> Add
+          <Plus size={16} /> 추가
         </Button>
       </div>
 
       <div className="mt-4 px-5">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-faint">Total balance</p>
+        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-faint">전체 잔고</p>
         <p className="mt-1 text-[32px] font-semibold tabular-nums text-ink">
           {formatMoney(total, data.settings.baseCurrency)}
         </p>
@@ -45,11 +45,11 @@ export default function AccountsPage() {
         {data.accounts.length === 0 ? (
           <EmptyState
             icon={<Wallet size={28} />}
-            title="No accounts yet"
-            description="Add a bank account, savings account, or cash to start tracking your balance."
+            title="아직 등록된 계좌가 없어요"
+            description="은행 계좌, 저축 계좌, 현금을 등록하고 잔고를 관리해보세요."
             action={
               <Button variant="accent" onClick={() => { setEditing(null); setFormOpen(true); }}>
-                Add an account
+                계좌 추가
               </Button>
             }
           />

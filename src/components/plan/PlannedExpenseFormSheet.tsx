@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
+import { PLANNED_EXPENSE_STATUS_LABELS } from "@/lib/labels";
 import type { CurrencyCode, PlannedExpense, PlannedExpenseStatus } from "@/types";
 
 export function PlannedExpenseFormSheet({
@@ -19,7 +20,7 @@ export function PlannedExpenseFormSheet({
   editing: PlannedExpense | null;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? "Edit Planned Expense" : "Add Planned Expense"}>
+    <Sheet open={open} onClose={onClose} title={editing ? "예정 지출 수정" : "예정 지출 추가"}>
       {open && <PlannedExpenseForm key={editing?.id ?? "new"} editing={editing} onDone={onClose} />}
     </Sheet>
   );
@@ -64,12 +65,12 @@ function PlannedExpenseForm({ editing, onDone }: { editing: PlannedExpense | nul
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Label>Name *</Label>
-        <Input placeholder="e.g. Sydney trip" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Label>이름 *</Label>
+        <Input placeholder="예: 시드니 여행" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div>
-          <Label>Expected amount *</Label>
+          <Label>예상 금액 *</Label>
           <Input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <Select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)} className="w-24">
@@ -78,13 +79,13 @@ function PlannedExpenseForm({ editing, onDone }: { editing: PlannedExpense | nul
         </Select>
       </div>
       <div>
-        <Label>Date</Label>
+        <Label>날짜</Label>
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
       <div>
-        <Label>Category</Label>
+        <Label>카테고리</Label>
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">None</option>
+          <option value="">없음</option>
           {topLevelCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -93,17 +94,19 @@ function PlannedExpenseForm({ editing, onDone }: { editing: PlannedExpense | nul
         </Select>
       </div>
       <div>
-        <Label>Status</Label>
+        <Label>상태</Label>
         <Select value={status} onChange={(e) => setStatus(e.target.value as PlannedExpenseStatus)}>
-          <option value="PLANNED">Planned</option>
-          <option value="PAID">Paid</option>
-          <option value="CANCELLED">Cancelled</option>
+          {(Object.keys(PLANNED_EXPENSE_STATUS_LABELS) as PlannedExpenseStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {PLANNED_EXPENSE_STATUS_LABELS[s]}
+            </option>
+          ))}
         </Select>
       </div>
       <div>
-        <Label>Account</Label>
+        <Label>계좌</Label>
         <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-          <option value="">None</option>
+          <option value="">없음</option>
           {data.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -113,8 +116,8 @@ function PlannedExpenseForm({ editing, onDone }: { editing: PlannedExpense | nul
       </div>
       <label className="flex items-center justify-between rounded-xl border border-border px-3.5 py-3">
         <div>
-          <span className="text-[14px] text-ink">Essential</span>
-          <p className="text-[12px] text-ink-muted">Counted in Available to Spend</p>
+          <span className="text-[14px] text-ink">필수</span>
+          <p className="text-[12px] text-ink-muted">지금 쓸 수 있는 돈 계산에 포함</p>
         </div>
         <input
           type="checkbox"
@@ -133,11 +136,11 @@ function PlannedExpenseForm({ editing, onDone }: { editing: PlannedExpense | nul
             }}
             type="button"
           >
-            Delete
+            삭제
           </Button>
         )}
         <Button variant="accent" size="lg" className="flex-1" disabled={!canSave} onClick={handleSave}>
-          {editing ? "Save Changes" : "Add Planned Expense"}
+          {editing ? "저장" : "예정 지출 추가"}
         </Button>
       </div>
     </div>

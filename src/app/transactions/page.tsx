@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, Receipt } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { ko } from "date-fns/locale";
 import { useData } from "@/lib/context/DataContext";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
 import { Input } from "@/components/ui/Input";
@@ -37,7 +38,7 @@ export default function TransactionsPage() {
     const keys = new Set(data.transactions.map(monthKeyOf));
     return Array.from(keys)
       .sort((a, b) => (a < b ? 1 : -1))
-      .map((key) => ({ key, label: format(parseISO(`${key}-01`), "MMMM yyyy") }));
+      .map((key) => ({ key, label: format(parseISO(`${key}-01`), "yyyy년 M월") }));
   }, [data.transactions]);
 
   const activeFilterCount = Object.values(filters).filter((v) => v !== "ALL").length;
@@ -75,20 +76,20 @@ export default function TransactionsPage() {
   return (
     <div className="pt-6">
       <div className="flex items-center justify-between px-5">
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink">Transactions</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight text-ink">내역</h1>
       </div>
 
       <div className="mt-4 flex items-center gap-2 px-5">
         <div className="relative flex-1">
           <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <Input
-            placeholder="Search merchant, category, memo"
+            placeholder="사용처, 카테고리, 메모 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Button variant={activeFilterCount > 0 ? "accent" : "outline"} size="icon" onClick={() => setFiltersOpen(true)} aria-label="Filters">
+        <Button variant={activeFilterCount > 0 ? "accent" : "outline"} size="icon" onClick={() => setFiltersOpen(true)} aria-label="필터">
           <SlidersHorizontal size={17} />
         </Button>
       </div>
@@ -97,22 +98,22 @@ export default function TransactionsPage() {
         {data.transactions.length === 0 ? (
           <EmptyState
             icon={<Receipt size={28} />}
-            title="No transactions yet."
-            description="Upload your first bank screenshot, or add one manually."
+            title="아직 등록된 거래가 없어요."
+            description="은행 거래내역 스크린샷을 올리거나 직접 입력해보세요."
             action={
               <Button variant="accent" onClick={() => openManual()}>
-                Add a transaction
+                거래 추가
               </Button>
             }
           />
         ) : filtered.length === 0 ? (
-          <EmptyState title="No matching transactions" description="Try a different search or clear your filters." />
+          <EmptyState title="검색 결과가 없어요" description="다른 검색어를 입력하거나 필터를 초기화해보세요." />
         ) : (
           <div className="flex flex-col">
             {grouped.map((group) => (
               <div key={group.date}>
                 <p className="sticky top-0 bg-background py-1.5 text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
-                  {format(parseISO(group.date), "EEE, MMM d")}
+                  {format(parseISO(group.date), "M월 d일 (EEE)", { locale: ko })}
                 </p>
                 <div className="divide-y divide-border">
                   {group.items.map((tx) => (

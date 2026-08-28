@@ -8,7 +8,7 @@ export function MerchantRulesManager() {
   const categoryById = new Map(data.categories.map((c) => [c.id, c]));
 
   if (data.merchantRules.length === 0) {
-    return <p className="px-1 text-[13px] text-ink-muted">No learned rules yet. They build up as you correct categories.</p>;
+    return <p className="px-1 text-[13px] text-ink-muted">아직 학습된 규칙이 없어요. 카테고리를 수정할 때마다 자동으로 쌓여요.</p>;
   }
 
   return (
@@ -18,7 +18,7 @@ export function MerchantRulesManager() {
           <div>
             <p className="text-[13px] font-medium text-ink">{rule.merchantPattern}</p>
             <p className="text-[12px] text-ink-muted">
-              → {[categoryById.get(rule.categoryId)?.name, rule.subcategory].filter(Boolean).join(" · ")} · used {rule.confidence}x
+              → {[categoryById.get(rule.categoryId)?.name, rule.subcategory].filter(Boolean).join(" · ")} · {rule.confidence}회 사용됨
             </p>
           </div>
           <button onClick={() => deleteMerchantRule(rule.id)} className="text-ink-faint hover:text-negative">

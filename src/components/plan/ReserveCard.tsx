@@ -20,15 +20,15 @@ export function ReserveCard() {
   }
 
   return (
-    <Card className="mx-5">
-      <CardContent className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
+    <Card>
+      <CardContent className="flex items-center justify-between gap-3 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <ShieldCheck size={18} />
           </div>
-          <div>
-            <p className="text-[13px] font-medium text-ink-muted">Reserve</p>
-            <p className="text-[12px] text-ink-faint">Money you never want to touch</p>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink-muted">남겨둘 돈</p>
+            <p className="text-[12px] text-ink-faint">절대 쓰지 않을 금액</p>
           </div>
         </div>
         {editing ? (
@@ -46,7 +46,7 @@ export function ReserveCard() {
             </button>
           </div>
         ) : (
-          <button onClick={() => setEditing(true)} className="flex items-center gap-1.5">
+          <button onClick={() => setEditing(true)} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
             <span className="text-[16px] font-semibold tabular-nums text-ink">
               {formatMoney(data.settings.reserveMinor, data.settings.reserveCurrency)}
             </span>

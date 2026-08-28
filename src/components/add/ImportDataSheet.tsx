@@ -71,13 +71,13 @@ export function ImportDataSheet() {
       try {
         const parsed = JSON.parse(text);
         if (!parsed || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.accounts)) {
-          setErrors(["This doesn't look like a Money OS export file."]);
+          setErrors(["Money OS에서 내보낸 파일이 아닌 것 같아요."]);
         } else {
           setJsonData(parsed as AppData);
           setErrors([]);
         }
       } catch {
-        setErrors(["Couldn't read that file as JSON."]);
+        setErrors(["JSON 파일을 읽을 수 없어요."]);
       }
       setStep("preview");
     }
@@ -133,7 +133,7 @@ export function ImportDataSheet() {
   }
 
   return (
-    <Sheet open={open} onClose={handleClose} title="Import Data">
+    <Sheet open={open} onClose={handleClose} title="파일 불러오기">
       <input
         ref={fileInputRef}
         type="file"
@@ -147,9 +147,24 @@ export function ImportDataSheet() {
 
       {step === "choose" && (
         <div className="flex flex-col gap-2">
-          <OptionButton icon={FileSpreadsheet} title="Transactions CSV" description="date, merchant, amount, currency, transaction_type, category, subcategory, account, memo" onClick={() => pick("TX_CSV")} />
-          <OptionButton icon={Wallet} title="Accounts CSV" description="name, bank, currency, balance, type, include_in_available" onClick={() => pick("ACCOUNTS_CSV")} />
-          <OptionButton icon={FileJson} title="Full backup (JSON)" description="Restores everything from a Money OS export. This replaces your current data." onClick={() => pick("JSON")} />
+          <OptionButton
+            icon={FileSpreadsheet}
+            title="거래 내역 CSV"
+            description="date, merchant, amount, currency, transaction_type, category, subcategory, account, memo"
+            onClick={() => pick("TX_CSV")}
+          />
+          <OptionButton
+            icon={Wallet}
+            title="계좌 CSV"
+            description="name, bank, currency, balance, type, include_in_available"
+            onClick={() => pick("ACCOUNTS_CSV")}
+          />
+          <OptionButton
+            icon={FileJson}
+            title="전체 백업 (JSON)"
+            description="Money OS에서 내보낸 파일로 모든 데이터를 복원해요. 현재 데이터는 모두 대체돼요."
+            onClick={() => pick("JSON")}
+          />
         </div>
       )}
 
@@ -158,7 +173,7 @@ export function ImportDataSheet() {
           {errors.length > 0 && (
             <div className="flex flex-col gap-1 rounded-xl bg-negative-soft px-3.5 py-3 text-[13px] text-negative">
               <div className="flex items-center gap-1.5 font-medium">
-                <TriangleAlert size={14} /> {errors.length} issue{errors.length === 1 ? "" : "s"} found
+                <TriangleAlert size={14} /> 문제 {errors.length}건 발견
               </div>
               {errors.slice(0, 5).map((e, i) => (
                 <p key={i}>{e}</p>
@@ -168,21 +183,21 @@ export function ImportDataSheet() {
 
           {kind === "TX_CSV" && (
             <div className="rounded-xl bg-surface-muted px-3.5 py-3 text-[14px] text-ink">
-              <p>{txRows.length} transaction{txRows.length === 1 ? "" : "s"} ready to import.</p>
-              {dupCount > 0 && <p className="mt-1 text-ink-muted">{dupCount} possible duplicate{dupCount === 1 ? "" : "s"} will be skipped.</p>}
+              <p>거래 {txRows.length}건을 불러올 수 있어요.</p>
+              {dupCount > 0 && <p className="mt-1 text-ink-muted">중복 가능성이 있는 {dupCount}건은 건너뛸게요.</p>}
             </div>
           )}
           {kind === "ACCOUNTS_CSV" && (
             <div className="rounded-xl bg-surface-muted px-3.5 py-3 text-[14px] text-ink">
-              <p>{accountRows.length} account{accountRows.length === 1 ? "" : "s"} ready to import.</p>
+              <p>계좌 {accountRows.length}개를 불러올 수 있어요.</p>
             </div>
           )}
           {kind === "JSON" && jsonData && (
             <div className="rounded-xl bg-warn-soft px-3.5 py-3 text-[14px] text-warn">
-              <p className="font-medium">This will replace all current data.</p>
+              <p className="font-medium">현재 데이터가 모두 대체돼요.</p>
               <p className="mt-1">
-                {jsonData.accounts.length} accounts, {jsonData.transactions.length} transactions, and everything else
-                from this file.
+                계좌 {jsonData.accounts.length}개, 거래 {jsonData.transactions.length}건을 포함해 이 파일의 모든 데이터로
+                대체돼요.
               </p>
             </div>
           )}
@@ -193,7 +208,7 @@ export function ImportDataSheet() {
             disabled={kind === "TX_CSV" ? txRows.length === 0 : kind === "ACCOUNTS_CSV" ? accountRows.length === 0 : !jsonData}
             onClick={confirmImport}
           >
-            Confirm Import
+            불러오기 확정
           </Button>
         </div>
       )}
@@ -203,9 +218,9 @@ export function ImportDataSheet() {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Check size={26} />
           </div>
-          <p className="text-[15px] font-medium text-ink">Imported {importedCount} item{importedCount === 1 ? "" : "s"}</p>
+          <p className="text-[15px] font-medium text-ink">{importedCount}건을 불러왔어요</p>
           <Button variant="secondary" onClick={handleClose}>
-            Done
+            완료
           </Button>
         </div>
       )}

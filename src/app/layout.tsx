@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Money OS",
-  description: "Know exactly what you can spend, right now.",
+  description: "지금 쓸 수 있는 돈이 얼마인지, 정확하게 확인하세요.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -40,7 +40,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-ink">
         <AppShell>{children}</AppShell>
       </body>

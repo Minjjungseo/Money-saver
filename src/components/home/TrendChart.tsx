@@ -20,7 +20,7 @@ export function TrendChart({
   return (
     <Card className="mx-5">
       <CardHeader>
-        <CardTitle>Monthly Income vs Expense</CardTitle>
+        <CardTitle>월별 수입 · 지출</CardTitle>
       </CardHeader>
       <CardContent className="pt-3">
         <div className="h-[180px] w-full">
@@ -52,7 +52,7 @@ export function TrendChart({
                 }}
                 formatter={(value, name) => [
                   formatMoney(Number(value), currency),
-                  name === "income" ? "Income" : "Expense",
+                  name === "income" ? "수입" : "지출",
                 ]}
               />
               <Bar dataKey="income" radius={[4, 4, 0, 0]} maxBarSize={18} fill="var(--accent)">
@@ -72,8 +72,8 @@ export function TrendChart({
           </ResponsiveContainer>
         </div>
         <div className="mt-2 flex items-center justify-center gap-4 text-[12px] text-ink-muted">
-          <Legend swatch="var(--accent)" label="Income" />
-          <Legend swatch="var(--negative)" label="Expense" />
+          <Legend swatch="var(--accent)" label="수입" />
+          <Legend swatch="var(--negative)" label="지출" />
         </div>
       </CardContent>
     </Card>

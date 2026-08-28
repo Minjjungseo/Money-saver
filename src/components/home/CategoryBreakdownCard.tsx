@@ -21,11 +21,11 @@ export function CategoryBreakdownCard({
   return (
     <Card className="mx-5">
       <CardHeader>
-        <CardTitle>Where did my money go?</CardTitle>
+        <CardTitle>이번 달 어디에 썼을까?</CardTitle>
       </CardHeader>
       <CardContent className="pt-3">
         {items.length === 0 ? (
-          <p className="py-4 text-center text-sm text-ink-muted">No spending recorded yet this month.</p>
+          <p className="py-4 text-center text-sm text-ink-muted">이번 달에는 아직 지출 내역이 없어요.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {visible.map((item) => (
@@ -47,7 +47,7 @@ export function CategoryBreakdownCard({
                 onClick={() => setShowAll((v) => !v)}
                 className="mt-1 text-[13px] font-medium text-accent"
               >
-                {showAll ? "Show less" : `View all (${items.length})`}
+                {showAll ? "간단히 보기" : `전체 보기 (${items.length})`}
               </button>
             )}
           </div>

@@ -1,14 +1,15 @@
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/Badge";
+import { TRANSACTION_TYPE_LABELS } from "@/lib/labels";
 import type { Category, Transaction } from "@/types";
 
-const TYPE_TONE: Record<Transaction["transactionType"], { label: string; showBadge: boolean }> = {
-  EXPENSE: { label: "", showBadge: false },
-  INCOME: { label: "", showBadge: false },
-  REFUND: { label: "Refund", showBadge: true },
-  TRANSFER: { label: "Transfer", showBadge: true },
-  EXCHANGE: { label: "Exchange", showBadge: true },
-  CASH_WITHDRAWAL: { label: "Cash Withdrawal", showBadge: true },
+const SHOW_TYPE_BADGE: Record<Transaction["transactionType"], boolean> = {
+  EXPENSE: false,
+  INCOME: false,
+  REFUND: true,
+  TRANSFER: true,
+  EXCHANGE: true,
+  CASH_WITHDRAWAL: true,
 };
 
 export function TransactionRow({
@@ -21,7 +22,7 @@ export function TransactionRow({
   onClick: () => void;
 }) {
   const isInflow = tx.transactionType === "INCOME" || tx.transactionType === "REFUND" || tx.transactionType === "TRANSFER";
-  const meta = TYPE_TONE[tx.transactionType];
+  const showTypeBadge = SHOW_TYPE_BADGE[tx.transactionType];
   const categoryLabel = [category?.name, tx.subcategory].filter(Boolean).join(" · ");
 
   return (
@@ -32,10 +33,10 @@ export function TransactionRow({
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="truncate text-[15px] font-medium text-ink">{tx.merchant}</p>
-          {!tx.reviewed && <Badge tone="warn">Unreviewed</Badge>}
+          {!tx.reviewed && <Badge tone="warn">확인 필요</Badge>}
         </div>
         <p className="truncate text-[13px] text-ink-muted">
-          {meta.showBadge ? meta.label : categoryLabel || "Uncategorized"}
+          {showTypeBadge ? TRANSACTION_TYPE_LABELS[tx.transactionType] : categoryLabel || "카테고리 없음"}
         </p>
       </div>
       <span

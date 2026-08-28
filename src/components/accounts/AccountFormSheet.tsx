@@ -6,16 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/labels";
 import type { Account, AccountType, CurrencyCode } from "@/types";
-
-const TYPE_LABELS: Record<AccountType, string> = {
-  CHECKING: "Everyday / Checking",
-  SAVINGS: "Savings",
-  CASH: "Cash",
-  CREDIT_CARD: "Credit Card",
-  INVESTMENT: "Investment",
-  OTHER: "Other",
-};
 
 export function AccountFormSheet({
   open,
@@ -27,7 +19,7 @@ export function AccountFormSheet({
   editing: Account | null;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={editing ? "Edit Account" : "Add Account"}>
+    <Sheet open={open} onClose={onClose} title={editing ? "계좌 수정" : "계좌 추가"}>
       {open && <AccountForm key={editing?.id ?? "new"} editing={editing} onDone={onClose} />}
     </Sheet>
   );
@@ -71,38 +63,38 @@ function AccountForm({ editing, onDone }: { editing: Account | null; onDone: () 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Label>Account name *</Label>
-        <Input placeholder="e.g. Everyday Account" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Label>계좌 이름 *</Label>
+        <Input placeholder="예: 생활비 통장" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div>
-        <Label>Bank</Label>
-        <Input placeholder="e.g. Commonwealth Bank" value={bank} onChange={(e) => setBank(e.target.value)} />
+        <Label>은행</Label>
+        <Input placeholder="예: Commonwealth Bank" value={bank} onChange={(e) => setBank(e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Currency</Label>
+          <Label>통화</Label>
           <Select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
             <option value="AUD">AUD</option>
             <option value="KRW">KRW</option>
           </Select>
         </div>
         <div>
-          <Label>Current balance *</Label>
+          <Label>현재 잔고 *</Label>
           <Input inputMode="decimal" placeholder="0.00" value={balance} onChange={(e) => setBalance(e.target.value)} />
         </div>
       </div>
       <div>
-        <Label>Account type</Label>
+        <Label>계좌 종류</Label>
         <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
-          {(Object.keys(TYPE_LABELS) as AccountType[]).map((t) => (
+          {(Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).map((t) => (
             <option key={t} value={t}>
-              {TYPE_LABELS[t]}
+              {ACCOUNT_TYPE_LABELS[t]}
             </option>
           ))}
         </Select>
       </div>
       <label className="flex items-center justify-between rounded-xl border border-border px-3.5 py-3">
-        <span className="text-[14px] text-ink">Include in Available to Spend</span>
+        <span className="text-[14px] text-ink">사용 가능 금액 계산에 포함</span>
         <input
           type="checkbox"
           checked={includeInAvailable}
@@ -114,11 +106,11 @@ function AccountForm({ editing, onDone }: { editing: Account | null; onDone: () 
       <div className="mt-2 flex gap-2">
         {editing && (
           <Button variant="destructive" onClick={handleDelete} type="button">
-            Delete
+            삭제
           </Button>
         )}
         <Button variant="accent" size="lg" className="flex-1" disabled={!canSave} onClick={handleSave}>
-          {editing ? "Save Changes" : "Add Account"}
+          {editing ? "저장" : "계좌 추가"}
         </Button>
       </div>
     </div>

@@ -11,7 +11,7 @@ export function AccountCard({ account, onClick }: { account: Account; onClick: (
       <div>
         <div className="flex items-center gap-2">
           <p className="text-[15px] font-medium text-ink">{account.name}</p>
-          {!account.includeInAvailable && <Badge tone="warn">Excluded</Badge>}
+          {!account.includeInAvailable && <Badge tone="warn">제외됨</Badge>}
         </div>
         <p className="text-[13px] text-ink-muted">
           {account.bank || "—"} · {account.currency}

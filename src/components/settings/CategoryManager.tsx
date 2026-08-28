@@ -57,7 +57,7 @@ export function CategoryManager() {
                 </button>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setNewSubFor(newSubFor === cat.id ? null : cat.id)} className="text-[12px] font-medium text-accent">
-                    + Sub
+                    + 하위 카테고리
                   </button>
                   {!cat.isSystem && (
                     <button onClick={() => deleteCategory(cat.id)} className="text-ink-faint hover:text-negative">
@@ -83,14 +83,14 @@ export function CategoryManager() {
               {newSubFor === cat.id && (
                 <div className="flex items-center gap-2 px-4 pb-3 pl-9">
                   <Input
-                    placeholder="Subcategory name"
+                    placeholder="하위 카테고리 이름"
                     value={newSubName}
                     onChange={(e) => setNewSubName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddSub(cat.id)}
                     className="h-9"
                   />
                   <Button size="sm" variant="accent" onClick={() => handleAddSub(cat.id)}>
-                    Add
+                    추가
                   </Button>
                 </div>
               )}
@@ -101,7 +101,7 @@ export function CategoryManager() {
 
       <div className="flex items-center gap-2">
         <Input
-          placeholder="New category name"
+          placeholder="새 카테고리 이름"
           value={newTopLevel}
           onChange={(e) => setNewTopLevel(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAddTopLevel()}

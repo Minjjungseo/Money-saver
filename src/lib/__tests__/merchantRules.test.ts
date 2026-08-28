@@ -52,7 +52,7 @@ describe("matchCategoryByName", () => {
   const categories = buildDefaultCategories();
 
   it("matches an exact category name case-insensitively", () => {
-    expect(matchCategoryByName("groceries", categories)).toBe(categoryIdFor("groceries"));
+    expect(matchCategoryByName("식비", categories)).toBe(categoryIdFor("groceries"));
   });
 
   it("returns null for an unrecognized name", () => {

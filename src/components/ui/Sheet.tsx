@@ -45,7 +45,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           <h2 className="text-[17px] font-semibold text-ink">{title}</h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label="닫기"
             className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
           >
             <X size={18} />

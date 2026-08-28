@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, List, CalendarClock, Wallet, PieChart } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { NAV_LABELS } from "@/lib/labels";
 
 const TABS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/transactions", label: "Transactions", icon: List },
-  { href: "/plan", label: "Plan", icon: CalendarClock },
-  { href: "/accounts", label: "Accounts", icon: Wallet },
-  { href: "/insights", label: "Insights", icon: PieChart },
+  { href: "/", label: NAV_LABELS.home, icon: Home },
+  { href: "/transactions", label: NAV_LABELS.transactions, icon: List },
+  { href: "/plan", label: NAV_LABELS.plan, icon: CalendarClock },
+  { href: "/accounts", label: NAV_LABELS.accounts, icon: Wallet },
+  { href: "/insights", label: NAV_LABELS.insights, icon: PieChart },
 ];
 
 export function BottomNav() {

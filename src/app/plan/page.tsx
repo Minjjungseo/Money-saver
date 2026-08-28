@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+import { ko } from "date-fns/locale";
 import { Plus, CalendarClock } from "lucide-react";
 import { useData } from "@/lib/context/DataContext";
 import { Button } from "@/components/ui/Button";
@@ -12,23 +13,15 @@ import { RecurringExpenseFormSheet } from "@/components/plan/RecurringExpenseFor
 import { PlannedExpenseFormSheet } from "@/components/plan/PlannedExpenseFormSheet";
 import { PlannedIncomeFormSheet } from "@/components/plan/PlannedIncomeFormSheet";
 import { formatMoney } from "@/lib/money";
+import { FREQUENCY_LABELS, PLANNED_EXPENSE_STATUS_LABELS } from "@/lib/labels";
 import type { PlannedExpense, PlannedIncome, RecurringExpense } from "@/types";
-
-const FREQUENCY_LABELS: Record<RecurringExpense["frequency"], string> = {
-  WEEKLY: "Weekly",
-  FORTNIGHTLY: "Fortnightly",
-  MONTHLY: "Monthly",
-  QUARTERLY: "Quarterly",
-  SIX_MONTHLY: "6-Monthly",
-  YEARLY: "Yearly",
-};
 
 function SectionHeader({ title, onAdd }: { title: string; onAdd: () => void }) {
   return (
     <div className="flex items-center justify-between px-5">
       <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
       <button onClick={onAdd} className="flex items-center gap-1 text-[13px] font-medium text-accent">
-        <Plus size={14} /> Add
+        <Plus size={14} /> 추가
       </button>
     </div>
   );
@@ -46,19 +39,21 @@ export default function PlanPage() {
 
   return (
     <div className="flex flex-col gap-6 pt-6">
-      <h1 className="px-5 text-[20px] font-semibold tracking-tight text-ink">Plan</h1>
+      <h1 className="px-5 text-[20px] font-semibold tracking-tight text-ink">예정된 돈</h1>
 
-      <ReserveCard />
+      <div className="px-5">
+        <ReserveCard />
+      </div>
 
       <section className="flex flex-col gap-2">
-        <SectionHeader title="Recurring Expenses" onAdd={() => setRecurringForm({ open: true, editing: null })} />
+        <SectionHeader title="정기 지출" onAdd={() => setRecurringForm({ open: true, editing: null })} />
         <div className="px-5">
           {recurring.length === 0 ? (
             <EmptyState
               icon={<CalendarClock size={24} />}
-              title="No recurring expenses"
-              description="Rent, subscriptions, insurance — anything that repeats."
-              action={<Button variant="accent" size="sm" onClick={() => setRecurringForm({ open: true, editing: null })}>Add recurring expense</Button>}
+              title="아직 등록된 정기 지출이 없어요"
+              description="월세, 구독료, 보험료처럼 반복되는 지출을 등록해보세요."
+              action={<Button variant="accent" size="sm" onClick={() => setRecurringForm({ open: true, editing: null })}>정기 지출 추가</Button>}
             />
           ) : (
             <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
@@ -71,10 +66,10 @@ export default function PlanPage() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="text-[14px] font-medium text-ink">{r.name}</p>
-                      {r.essential && <Badge tone="accent">Essential</Badge>}
+                      {r.essential && <Badge tone="accent">필수</Badge>}
                     </div>
                     <p className="text-[12px] text-ink-muted">
-                      {FREQUENCY_LABELS[r.frequency]} · Next {format(parseISO(r.nextDueDate), "MMM d")}
+                      {FREQUENCY_LABELS[r.frequency]} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
                     </p>
                   </div>
                   <span className="text-[14px] font-medium tabular-nums text-ink">
@@ -88,13 +83,13 @@ export default function PlanPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <SectionHeader title="Planned Expenses" onAdd={() => setPlannedForm({ open: true, editing: null })} />
+        <SectionHeader title="예정 지출" onAdd={() => setPlannedForm({ open: true, editing: null })} />
         <div className="px-5">
           {planned.length === 0 ? (
             <EmptyState
-              title="No planned expenses"
-              description="One-off future costs like a trip or a big purchase."
-              action={<Button variant="accent" size="sm" onClick={() => setPlannedForm({ open: true, editing: null })}>Add planned expense</Button>}
+              title="아직 등록된 예정 지출이 없어요"
+              description="여행이나 큰 지출처럼 한 번만 나갈 돈을 등록해보세요."
+              action={<Button variant="accent" size="sm" onClick={() => setPlannedForm({ open: true, editing: null })}>예정 지출 추가</Button>}
             />
           ) : (
             <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
@@ -107,10 +102,10 @@ export default function PlanPage() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="text-[14px] font-medium text-ink">{p.name}</p>
-                      <Badge tone={p.essential ? "accent" : "warn"}>{p.essential ? "Essential" : "Optional"}</Badge>
-                      {p.status !== "PLANNED" && <Badge>{p.status === "PAID" ? "Paid" : "Cancelled"}</Badge>}
+                      <Badge tone={p.essential ? "accent" : "warn"}>{p.essential ? "필수" : "선택"}</Badge>
+                      {p.status !== "PLANNED" && <Badge>{PLANNED_EXPENSE_STATUS_LABELS[p.status]}</Badge>}
                     </div>
-                    <p className="text-[12px] text-ink-muted">{format(parseISO(p.date), "MMM d, yyyy")}</p>
+                    <p className="text-[12px] text-ink-muted">{format(parseISO(p.date), "yyyy년 M월 d일", { locale: ko })}</p>
                   </div>
                   <span className="text-[14px] font-medium tabular-nums text-ink">
                     {formatMoney(p.expectedAmountMinor, p.currency)}
@@ -123,13 +118,13 @@ export default function PlanPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <SectionHeader title="Planned Income" onAdd={() => setIncomeForm({ open: true, editing: null })} />
+        <SectionHeader title="예정 수입" onAdd={() => setIncomeForm({ open: true, editing: null })} />
         <div className="px-5">
           {incomes.length === 0 ? (
             <EmptyState
-              title="No planned income"
-              description="Upcoming pay or expected money you're counting on."
-              action={<Button variant="accent" size="sm" onClick={() => setIncomeForm({ open: true, editing: null })}>Add planned income</Button>}
+              title="아직 등록된 예정 수입이 없어요"
+              description="들어올 예정인 급여나 수입을 등록해보세요."
+              action={<Button variant="accent" size="sm" onClick={() => setIncomeForm({ open: true, editing: null })}>예정 수입 추가</Button>}
             />
           ) : (
             <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
@@ -142,9 +137,9 @@ export default function PlanPage() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="text-[14px] font-medium text-ink">{inc.name}</p>
-                      <Badge tone={inc.confirmed ? "accent" : "warn"}>{inc.confirmed ? "Confirmed" : "Estimated"}</Badge>
+                      <Badge tone={inc.confirmed ? "accent" : "warn"}>{inc.confirmed ? "확정" : "예상"}</Badge>
                     </div>
-                    <p className="text-[12px] text-ink-muted">{format(parseISO(inc.expectedDate), "MMM d, yyyy")}</p>
+                    <p className="text-[12px] text-ink-muted">{format(parseISO(inc.expectedDate), "yyyy년 M월 d일", { locale: ko })}</p>
                   </div>
                   <span className="text-[14px] font-medium tabular-nums text-accent">
                     +{formatMoney(inc.amountMinor, inc.currency)}
