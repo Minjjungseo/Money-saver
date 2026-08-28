@@ -1,6 +1,7 @@
 import type {
   Account,
   AppData,
+  Budget,
   PlannedExpense,
   PlannedIncome,
   RecurringExpense,
@@ -44,6 +45,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
     bank: "Commonwealth Bank",
     currency: "AUD",
     balanceMinor: toMinorUnits(5820, "AUD"),
+    balanceAsOfDate: fmt(referenceDate),
     type: "CHECKING",
     includeInAvailable: true,
     isDemo: true,
@@ -56,6 +58,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
     bank: "KB Kookmin",
     currency: "KRW",
     balanceMinor: toMinorUnits(3200000, "KRW"),
+    balanceAsOfDate: fmt(referenceDate),
     type: "SAVINGS",
     includeInAvailable: true,
     isDemo: true,
@@ -68,6 +71,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
     bank: "Cash",
     currency: "AUD",
     balanceMinor: toMinorUnits(120, "AUD"),
+    balanceAsOfDate: fmt(referenceDate),
     type: "CASH",
     includeInAvailable: true,
     isDemo: true,
@@ -449,6 +453,21 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
     },
   ];
 
+  const budgets: Budget[] = [
+    {
+      id: generateId("budget"),
+      name: "주간 생활비",
+      amountMinor: toMinorUnits(300, "AUD"),
+      currency: "AUD",
+      period: "WEEKLY",
+      categoryId: null,
+      active: true,
+      isDemo: true,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+  ];
+
   return {
     accounts,
     transactions,
@@ -456,7 +475,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
     recurringExpenses,
     plannedExpenses,
     plannedIncomes,
-    budgets: [],
+    budgets,
     importBatches: [],
     merchantRules: [
       {
@@ -488,7 +507,12 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
       },
     ],
     exchangeRates: [{ pair: "AUD_KRW", rate: 900, updatedAt: nowIso }],
-    settings: { ...DEFAULT_SETTINGS, reserveMinor: toMinorUnits(5000, "AUD"), demoDataActive: true },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      reserveMinor: toMinorUnits(5000, "AUD"),
+      reserveConfirmed: true,
+      demoDataActive: true,
+    },
   };
 }
 

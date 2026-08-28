@@ -78,6 +78,10 @@ interface DataContextValue {
   upsertMerchantRule(merchantPattern: string, categoryId: string, subcategory: string | null): void;
   deleteMerchantRule(id: string): void;
 
+  addBudget(input: Omit<Budget, "id" | "createdAt" | "updatedAt">): Budget;
+  updateBudget(id: string, patch: Partial<Budget>): void;
+  deleteBudget(id: string): void;
+
   updateSettings(patch: Partial<Settings>): void;
   updateBudgets(items: Budget[]): void;
   updateExchangeRate(pair: string, rate: number): void;
@@ -111,6 +115,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           repository.saveRecurringExpenses(demo.recurringExpenses),
           repository.savePlannedExpenses(demo.plannedExpenses),
           repository.savePlannedIncomes(demo.plannedIncomes),
+          repository.saveBudgets(demo.budgets),
           repository.saveMerchantRules(demo.merchantRules),
           repository.saveExchangeRates(demo.exchangeRates),
         ]);
@@ -363,6 +368,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addBudget = useCallback<DataContextValue["addBudget"]>((input) => {
+    const item: Budget = { ...input, id: generateId("budget"), createdAt: nowIso(), updatedAt: nowIso() };
+    setData((prev) => {
+      const budgets = [...prev.budgets, item];
+      repository.saveBudgets(budgets);
+      return { ...prev, budgets };
+    });
+    return item;
+  }, []);
+
+  const updateBudget = useCallback<DataContextValue["updateBudget"]>((id, patch) => {
+    setData((prev) => {
+      const budgets = prev.budgets.map((b) => (b.id === id ? { ...b, ...patch, updatedAt: nowIso() } : b));
+      repository.saveBudgets(budgets);
+      return { ...prev, budgets };
+    });
+  }, []);
+
+  const deleteBudget = useCallback<DataContextValue["deleteBudget"]>((id) => {
+    setData((prev) => {
+      const budgets = prev.budgets.filter((b) => b.id !== id);
+      repository.saveBudgets(budgets);
+      return { ...prev, budgets };
+    });
+  }, []);
+
   const updateBudgets = useCallback<DataContextValue["updateBudgets"]>((items) => {
     setData((prev) => {
       repository.saveBudgets(items);
@@ -390,6 +421,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         recurringExpenses: prev.recurringExpenses.filter((r) => !r.isDemo),
         plannedExpenses: prev.plannedExpenses.filter((p) => !p.isDemo),
         plannedIncomes: prev.plannedIncomes.filter((p) => !p.isDemo),
+        budgets: prev.budgets.filter((b) => !b.isDemo),
         settings: { ...prev.settings, demoDataActive: false },
       };
       repository.saveAccounts(next.accounts);
@@ -397,6 +429,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       repository.saveRecurringExpenses(next.recurringExpenses);
       repository.savePlannedExpenses(next.plannedExpenses);
       repository.savePlannedIncomes(next.plannedIncomes);
+      repository.saveBudgets(next.budgets);
       repository.saveSettings(next.settings);
       return next;
     });
@@ -421,6 +454,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     repository.saveRecurringExpenses(demo.recurringExpenses);
     repository.savePlannedExpenses(demo.plannedExpenses);
     repository.savePlannedIncomes(demo.plannedIncomes);
+    repository.saveBudgets(demo.budgets);
     repository.saveMerchantRules(demo.merchantRules);
     repository.saveExchangeRates(demo.exchangeRates);
     setData(demo);
@@ -467,6 +501,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deleteCategory,
       upsertMerchantRule,
       deleteMerchantRule,
+      addBudget,
+      updateBudget,
+      deleteBudget,
       updateSettings,
       updateBudgets,
       updateExchangeRate,
@@ -499,6 +536,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deleteCategory,
       upsertMerchantRule,
       deleteMerchantRule,
+      addBudget,
+      updateBudget,
+      deleteBudget,
       updateSettings,
       updateBudgets,
       updateExchangeRate,

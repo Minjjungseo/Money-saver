@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
-import { FREQUENCY_LABELS } from "@/lib/labels";
-import type { CurrencyCode, RecurringExpense, RecurringFrequency } from "@/types";
+import { FREQUENCY_LABELS, INTERVAL_UNIT_LABELS } from "@/lib/labels";
+import type { CurrencyCode, IntervalUnit, RecurringExpense, RecurringFrequency } from "@/types";
+
+const CUSTOM_INTERVAL_COUNTS = [1, 2, 3, 6, 12];
 
 export function RecurringExpenseFormSheet({
   open,
@@ -33,6 +35,8 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
   const [amount, setAmount] = useState(editing ? String(toMajorUnits(editing.amountMinor, editing.currency)) : "");
   const [currency, setCurrency] = useState<CurrencyCode>(editing?.currency ?? data.settings.baseCurrency);
   const [frequency, setFrequency] = useState<RecurringFrequency>(editing?.frequency ?? "MONTHLY");
+  const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>(editing?.customInterval?.unit ?? "MONTH");
+  const [intervalCount, setIntervalCount] = useState(editing?.customInterval?.count ?? 2);
   const [nextDueDate, setNextDueDate] = useState(editing?.nextDueDate ?? format(new Date(), "yyyy-MM-dd"));
   const [essential, setEssential] = useState(editing?.essential ?? true);
   const [accountId, setAccountId] = useState(editing?.accountId ?? data.accounts[0]?.id ?? "");
@@ -47,6 +51,7 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
       amountMinor: toMinorUnits(Number(amount), currency),
       currency,
       frequency,
+      customInterval: frequency === "CUSTOM" ? { unit: intervalUnit, count: intervalCount } : null,
       nextDueDate,
       essential,
       accountId: accountId || null,
@@ -89,6 +94,29 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
             </option>
           ))}
         </Select>
+        {frequency === "CUSTOM" && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Select value={intervalCount} onChange={(e) => setIntervalCount(Number(e.target.value))}>
+              {CUSTOM_INTERVAL_COUNTS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </Select>
+            <Select value={intervalUnit} onChange={(e) => setIntervalUnit(e.target.value as IntervalUnit)}>
+              {(Object.keys(INTERVAL_UNIT_LABELS) as IntervalUnit[]).map((u) => (
+                <option key={u} value={u}>
+                  {INTERVAL_UNIT_LABELS[u]}마다
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+        {frequency === "CUSTOM" && (
+          <p className="mt-1 text-[12px] text-ink-faint">
+            학기·텀처럼 날짜가 불규칙한 항목은 정기 지출 대신 예정 지출로 개별 등록하는 게 더 정확해요.
+          </p>
+        )}
       </div>
       <div>
         <Label>다음 결제일</Label>

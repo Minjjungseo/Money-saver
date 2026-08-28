@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   baseCurrency: "AUD",
   reserveMinor: 0,
   reserveCurrency: "AUD",
+  reserveConfirmed: false,
   availableHorizon: "END_OF_MONTH",
   hasSeenDemoNotice: false,
   demoDataActive: false,

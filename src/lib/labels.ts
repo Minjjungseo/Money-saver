@@ -7,6 +7,7 @@
 import type {
   AccountType,
   PlannedExpenseStatus,
+  RecurringExpense,
   RecurringFrequency,
   TransactionType,
 } from "@/types";
@@ -45,7 +46,20 @@ export const FREQUENCY_LABELS: Record<RecurringFrequency, string> = {
   QUARTERLY: "3개월마다",
   SIX_MONTHLY: "6개월마다",
   YEARLY: "매년",
+  CUSTOM: "직접 설정",
 };
+
+export const INTERVAL_UNIT_LABELS = {
+  WEEK: "주",
+  MONTH: "개월",
+} as const;
+
+/** Human-readable frequency, resolving CUSTOM to its actual interval (e.g. "2개월마다"). */
+export function describeFrequency(recurring: Pick<RecurringExpense, "frequency" | "customInterval">): string {
+  if (recurring.frequency !== "CUSTOM") return FREQUENCY_LABELS[recurring.frequency];
+  const interval = recurring.customInterval ?? { unit: "MONTH" as const, count: 1 };
+  return `${interval.count}${INTERVAL_UNIT_LABELS[interval.unit]}마다`;
+}
 
 export const PLANNED_EXPENSE_STATUS_LABELS: Record<PlannedExpenseStatus, string> = {
   PLANNED: "예정",

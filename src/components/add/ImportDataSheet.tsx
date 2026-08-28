@@ -120,6 +120,7 @@ export function ImportDataSheet() {
           bank: r.bank,
           currency: r.currency,
           balanceMinor: r.balanceMinor,
+          balanceAsOfDate: r.balanceAsOfDate,
           type: r.type,
           includeInAvailable: r.includeInAvailable,
         });

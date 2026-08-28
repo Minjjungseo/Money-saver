@@ -1,8 +1,8 @@
 import { addDays, addMonths, addWeeks, parseISO } from "date-fns";
-import type { RecurringExpense, RecurringFrequency } from "@/types";
+import type { RecurringExpense } from "@/types";
 
-function advance(date: Date, frequency: RecurringFrequency): Date {
-  switch (frequency) {
+function advance(date: Date, recurring: RecurringExpense): Date {
+  switch (recurring.frequency) {
     case "WEEKLY":
       return addWeeks(date, 1);
     case "FORTNIGHTLY":
@@ -15,6 +15,10 @@ function advance(date: Date, frequency: RecurringFrequency): Date {
       return addMonths(date, 6);
     case "YEARLY":
       return addMonths(date, 12);
+    case "CUSTOM": {
+      const interval = recurring.customInterval ?? { unit: "MONTH", count: 1 };
+      return interval.unit === "WEEK" ? addWeeks(date, interval.count) : addMonths(date, interval.count);
+    }
   }
 }
 
@@ -41,7 +45,7 @@ export function expandRecurringOccurrences(
     if (cursor >= rangeStart) {
       occurrences.push(cursor);
     }
-    cursor = advance(cursor, recurring.frequency);
+    cursor = advance(cursor, recurring);
   }
   return occurrences;
 }

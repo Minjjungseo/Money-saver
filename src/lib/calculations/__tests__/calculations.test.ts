@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type {
   Account,
+  Budget,
   ExchangeRate,
   PlannedExpense,
   PlannedIncome,
   RecurringExpense,
+  Settings,
   Transaction,
 } from "@/types";
 import { toMinorUnits } from "@/lib/money";
 import {
   calculateAvailableToSpend,
+  calculateAvailableToSpendReadiness,
   calculateCategoryBreakdown,
   calculateMonthlyExpense,
   calculateMonthlyIncome,
@@ -17,9 +20,15 @@ import {
   calculateTotalBalances,
   calculateUpcomingEssentialExpenses,
   calculateConfirmedIncoming,
+  calculateWeeklyBudgetUsage,
+  expandRecurringOccurrences,
   getHorizonRange,
+  getLatestTransactionDate,
+  daysSinceLatestTransaction,
 } from "@/lib/calculations";
+import { describeFrequency } from "@/lib/labels";
 import { buildDefaultCategories, categoryIdFor } from "@/lib/defaultCategories";
+import { DEFAULT_SETTINGS } from "@/lib/repository/localStorageRepository";
 
 const RATES: ExchangeRate[] = [{ pair: "AUD_KRW", rate: 900, updatedAt: "2026-01-01" }];
 const AUG = new Date(2026, 7, 15); // 15 Aug 2026
@@ -54,6 +63,7 @@ function account(partial: Partial<Account>): Account {
     bank: "Test Bank",
     currency: "AUD",
     balanceMinor: toMinorUnits(1000, "AUD"),
+    balanceAsOfDate: "2026-08-01",
     type: "CHECKING",
     includeInAvailable: true,
     createdAt: "2026-01-01T00:00:00Z",
@@ -284,5 +294,262 @@ describe("category breakdown", () => {
     const breakdown = calculateCategoryBreakdown(t, categories, AUG, "AUD", RATES);
     const car = breakdown.find((b) => b.categoryId === categoryIdFor("car"));
     expect(car?.amountMinor).toBe(toMinorUnits(120, "AUD"));
+  });
+});
+
+describe("CUSTOM_INTERVAL recurring frequency", () => {
+  function customRecurring(partial: Partial<RecurringExpense>): RecurringExpense {
+    return {
+      id: "r1",
+      name: "Electricity (Alinta)",
+      amountMinor: toMinorUnits(160, "AUD"),
+      currency: "AUD",
+      frequency: "CUSTOM",
+      customInterval: { unit: "MONTH", count: 2 },
+      nextDueDate: "2026-08-10",
+      essential: true,
+      accountId: "acc1",
+      startDate: "2026-08-10",
+      endDate: null,
+      categoryId: null,
+      createdAt: "",
+      updatedAt: "",
+      ...partial,
+    };
+  }
+
+  it("advances by N months for a MONTH-unit custom interval (e.g. bi-monthly)", () => {
+    const occurrences = expandRecurringOccurrences(
+      customRecurring({}),
+      new Date(2026, 7, 1),
+      new Date(2027, 1, 1)
+    );
+    expect(occurrences.map((d) => d.toISOString().slice(0, 10))).toEqual([
+      "2026-08-10",
+      "2026-10-10",
+      "2026-12-10",
+    ]);
+  });
+
+  it("advances by N weeks for a WEEK-unit custom interval", () => {
+    const occurrences = expandRecurringOccurrences(
+      customRecurring({ customInterval: { unit: "WEEK", count: 3 }, nextDueDate: "2026-08-01" }),
+      new Date(2026, 7, 1),
+      new Date(2026, 8, 1)
+    );
+    expect(occurrences.map((d) => d.toISOString().slice(0, 10))).toEqual([
+      "2026-08-01",
+      "2026-08-22",
+    ]);
+  });
+
+  it("falls back to a sane default (1 month) if customInterval is missing", () => {
+    const occurrences = expandRecurringOccurrences(
+      customRecurring({ customInterval: null }),
+      new Date(2026, 7, 1),
+      new Date(2026, 9, 1)
+    );
+    expect(occurrences).toHaveLength(2);
+  });
+
+  it("describeFrequency resolves CUSTOM to its actual interval in Korean", () => {
+    expect(describeFrequency({ frequency: "CUSTOM", customInterval: { unit: "MONTH", count: 2 } })).toBe(
+      "2개월마다"
+    );
+    expect(describeFrequency({ frequency: "CUSTOM", customInterval: { unit: "WEEK", count: 3 } })).toBe(
+      "3주마다"
+    );
+    expect(describeFrequency({ frequency: "MONTHLY", customInterval: null })).toBe("매월");
+  });
+
+  it("a bi-monthly CUSTOM recurring expense counts correctly toward upcoming essential spend", () => {
+    const total = calculateUpcomingEssentialExpenses(
+      [customRecurring({ essential: true })],
+      [],
+      new Date(2026, 7, 1),
+      new Date(2026, 7, 31),
+      "AUD",
+      RATES
+    );
+    // Only the Aug 10 occurrence falls inside August.
+    expect(total).toBe(toMinorUnits(160, "AUD"));
+  });
+});
+
+describe("Available-to-Spend readiness gating", () => {
+  const readySettings: Settings = { ...DEFAULT_SETTINGS, reserveConfirmed: true };
+  const confirmedAccount = account({ includeInAvailable: true, balanceAsOfDate: "2026-08-19" });
+  const essentialRecurring: RecurringExpense = {
+    id: "r1",
+    name: "Rent",
+    amountMinor: toMinorUnits(650, "AUD"),
+    currency: "AUD",
+    frequency: "WEEKLY",
+    nextDueDate: "2026-08-17",
+    essential: true,
+    accountId: "acc1",
+    startDate: "2026-01-01",
+    endDate: null,
+    categoryId: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+  const confirmedIncome: PlannedIncome = {
+    id: "i1",
+    name: "Salary",
+    amountMinor: toMinorUnits(2600, "AUD"),
+    expectedDate: "2026-08-25",
+    currency: "AUD",
+    confirmed: true,
+    source: "Employer",
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  it("is ready when all four conditions are satisfied", () => {
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [confirmedAccount],
+      recurringExpenses: [essentialRecurring],
+      plannedExpenses: [],
+      plannedIncomes: [confirmedIncome],
+      settings: readySettings,
+    });
+    expect(result).toEqual({ ready: true, missing: [] });
+  });
+
+  it("flags an included account with no balanceAsOfDate as unconfirmed", () => {
+    const unconfirmed = account({ includeInAvailable: true, balanceAsOfDate: null });
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [unconfirmed],
+      recurringExpenses: [essentialRecurring],
+      plannedExpenses: [],
+      plannedIncomes: [confirmedIncome],
+      settings: readySettings,
+    });
+    expect(result.ready).toBe(false);
+    expect(result.missing).toContain("ACCOUNT_BALANCE_UNCONFIRMED");
+  });
+
+  it("ignores an unconfirmed balance on an account excluded from the available-to-spend calc", () => {
+    const excludedUnconfirmed = account({ includeInAvailable: false, balanceAsOfDate: null });
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [confirmedAccount, excludedUnconfirmed],
+      recurringExpenses: [essentialRecurring],
+      plannedExpenses: [],
+      plannedIncomes: [confirmedIncome],
+      settings: readySettings,
+    });
+    expect(result.missing).not.toContain("ACCOUNT_BALANCE_UNCONFIRMED");
+  });
+
+  it("flags missing essential recurring/planned expenses", () => {
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [confirmedAccount],
+      recurringExpenses: [],
+      plannedExpenses: [],
+      plannedIncomes: [confirmedIncome],
+      settings: readySettings,
+    });
+    expect(result.missing).toContain("NO_ESSENTIAL_EXPENSE");
+  });
+
+  it("flags no planned income registered at all", () => {
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [confirmedAccount],
+      recurringExpenses: [essentialRecurring],
+      plannedExpenses: [],
+      plannedIncomes: [],
+      settings: readySettings,
+    });
+    expect(result.missing).toContain("NO_PLANNED_INCOME");
+  });
+
+  it("flags an unconfirmed reserve", () => {
+    const result = calculateAvailableToSpendReadiness({
+      accounts: [confirmedAccount],
+      recurringExpenses: [essentialRecurring],
+      plannedExpenses: [],
+      plannedIncomes: [confirmedIncome],
+      settings: { ...DEFAULT_SETTINGS, reserveConfirmed: false },
+    });
+    expect(result.missing).toContain("RESERVE_NOT_SET");
+  });
+});
+
+describe("weekly budget usage", () => {
+  const weeklyBudget: Budget = {
+    id: "b1",
+    name: "장보기",
+    amountMinor: toMinorUnits(170, "AUD"),
+    currency: "AUD",
+    period: "WEEKLY",
+    categoryId: null,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  it("sums active weekly budgets and nets spend against them for the current week", () => {
+    const transactions = [
+      // AUG (2026-08-15) and the tx() default date (2026-08-10) both fall in the
+      // same Mon-Sun week (Aug 10-16).
+      tx({ id: "e1", date: "2026-08-10", transactionType: "EXPENSE", amountMinor: toMinorUnits(80, "AUD") }),
+      tx({ id: "e2", date: "2026-08-12", transactionType: "EXPENSE", amountMinor: toMinorUnits(50, "AUD") }),
+      tx({ id: "r1", date: "2026-08-13", transactionType: "REFUND", amountMinor: toMinorUnits(10, "AUD") }),
+      // Outside the current week — must not count.
+      tx({ id: "e3", date: "2026-08-01", transactionType: "EXPENSE", amountMinor: toMinorUnits(999, "AUD") }),
+      // A transfer must never count as spend.
+      tx({ id: "t1", date: "2026-08-11", transactionType: "TRANSFER", amountMinor: toMinorUnits(500, "AUD") }),
+    ];
+    const usage = calculateWeeklyBudgetUsage(transactions, [weeklyBudget], AUG, "AUD", RATES);
+    expect(usage.budgetMinor).toBe(toMinorUnits(170, "AUD"));
+    expect(usage.usedMinor).toBe(toMinorUnits(120, "AUD")); // 80 + 50 - 10
+    expect(usage.remainingMinor).toBe(toMinorUnits(50, "AUD"));
+  });
+
+  it("ignores inactive and monthly budgets", () => {
+    const inactive: Budget = { ...weeklyBudget, id: "b2", active: false };
+    const monthly: Budget = { ...weeklyBudget, id: "b3", period: "MONTHLY" };
+    const usage = calculateWeeklyBudgetUsage([], [inactive, monthly], AUG, "AUD", RATES);
+    expect(usage.budgetMinor).toBe(0);
+  });
+
+  it("scopes a category-specific budget to only that category's spend", () => {
+    const categories = buildDefaultCategories();
+    const groceryId = categoryIdFor("groceries");
+    const diningId = categoryIdFor("dining");
+    const scoped: Budget = { ...weeklyBudget, categoryId: groceryId };
+    const transactions = [
+      tx({ id: "e1", date: "2026-08-10", transactionType: "EXPENSE", categoryId: groceryId, amountMinor: toMinorUnits(50, "AUD") }),
+      tx({ id: "e2", date: "2026-08-11", transactionType: "EXPENSE", categoryId: diningId, amountMinor: toMinorUnits(999, "AUD") }),
+    ];
+    const usage = calculateWeeklyBudgetUsage(transactions, [scoped], AUG, "AUD", RATES);
+    expect(usage.usedMinor).toBe(toMinorUnits(50, "AUD"));
+    void categories;
+  });
+});
+
+describe("data freshness", () => {
+  it("returns the most recent transaction date", () => {
+    const transactions = [
+      tx({ id: "a", date: "2026-08-10" }),
+      tx({ id: "b", date: "2026-08-19" }),
+      tx({ id: "c", date: "2026-07-30" }),
+    ];
+    expect(getLatestTransactionDate(transactions)).toBe("2026-08-19");
+  });
+
+  it("returns null when there are no transactions", () => {
+    expect(getLatestTransactionDate([])).toBeNull();
+  });
+
+  it("computes days behind the reference date", () => {
+    const transactions = [tx({ date: "2026-08-19" })];
+    expect(daysSinceLatestTransaction(transactions, new Date(2026, 7, 28))).toBe(9);
+  });
+
+  it("is zero when the latest transaction is today", () => {
+    const transactions = [tx({ date: "2026-08-28" })];
+    expect(daysSinceLatestTransaction(transactions, new Date(2026, 7, 28, 18, 30))).toBe(0);
   });
 });

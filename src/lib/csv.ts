@@ -150,13 +150,21 @@ export function parseTransactionsCsv(text: string): { rows: TransactionCsvRow[];
   return { rows, errors };
 }
 
-const ACCOUNT_HEADERS = ["name", "bank", "currency", "balance", "type", "include_in_available"];
+const ACCOUNT_HEADERS = ["name", "bank", "currency", "balance", "type", "include_in_available", "balance_as_of"];
 
 export function accountsToCsv(accounts: Account[]): string {
   const lines = [toRow(ACCOUNT_HEADERS)];
   for (const a of accounts) {
     lines.push(
-      toRow([a.name, a.bank, a.currency, toMajorUnits(a.balanceMinor, a.currency), a.type, a.includeInAvailable ? "true" : "false"])
+      toRow([
+        a.name,
+        a.bank,
+        a.currency,
+        toMajorUnits(a.balanceMinor, a.currency),
+        a.type,
+        a.includeInAvailable ? "true" : "false",
+        a.balanceAsOfDate ?? "",
+      ])
     );
   }
   return lines.join("\n");
@@ -169,9 +177,12 @@ export interface AccountCsvRow {
   balanceMinor: number;
   type: AccountType;
   includeInAvailable: boolean;
+  /** ISO date (yyyy-MM-dd) the balance was confirmed as of, or null if the file doesn't say — treated as "unconfirmed", not zero. */
+  balanceAsOfDate: string | null;
 }
 
 const VALID_ACCOUNT_TYPES: AccountType[] = ["CHECKING", "SAVINGS", "CASH", "CREDIT_CARD", "INVESTMENT", "OTHER"];
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parseAccountsCsv(text: string): { rows: AccountCsvRow[]; errors: string[] } {
   const table = parseCsv(text);
@@ -197,6 +208,7 @@ export function parseAccountsCsv(text: string): { rows: AccountCsvRow[]; errors:
       continue;
     }
     const typeRaw = get("type").toUpperCase() as AccountType;
+    const balanceAsOfRaw = get("balance_as_of");
     rows.push({
       name,
       bank: get("bank"),
@@ -204,6 +216,7 @@ export function parseAccountsCsv(text: string): { rows: AccountCsvRow[]; errors:
       balanceMinor: toMinorUnits(balanceNum, currency === "KRW" ? "KRW" : "AUD"),
       type: VALID_ACCOUNT_TYPES.includes(typeRaw) ? typeRaw : "OTHER",
       includeInAvailable: get("include_in_available").toLowerCase() !== "false",
+      balanceAsOfDate: ISO_DATE_RE.test(balanceAsOfRaw) ? balanceAsOfRaw : null,
     });
   }
   return { rows, errors };

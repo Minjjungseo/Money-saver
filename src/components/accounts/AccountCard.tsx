@@ -1,8 +1,11 @@
+import { format, parseISO } from "date-fns";
+import { ko } from "date-fns/locale";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/Badge";
 import type { Account } from "@/types";
 
 export function AccountCard({ account, onClick }: { account: Account; onClick: () => void }) {
+  const confirmed = Boolean(account.balanceAsOfDate);
   return (
     <button
       onClick={onClick}
@@ -17,9 +20,23 @@ export function AccountCard({ account, onClick }: { account: Account; onClick: (
           {account.bank || "—"} · {account.currency}
         </p>
       </div>
-      <p className="text-[16px] font-semibold tabular-nums text-ink">
-        {formatMoney(account.balanceMinor, account.currency)}
-      </p>
+      <div className="text-right">
+        {confirmed ? (
+          <>
+            <p className="text-[16px] font-semibold tabular-nums text-ink">
+              {formatMoney(account.balanceMinor, account.currency)}
+            </p>
+            <p className="text-[11px] text-ink-faint">
+              마지막 확인: {format(parseISO(account.balanceAsOfDate!), "yyyy.MM.dd", { locale: ko })}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[16px] font-semibold text-warn">잔액 미확인</p>
+            <p className="text-[11px] text-ink-faint">눌러서 확인해주세요</p>
+          </>
+        )}
+      </div>
     </button>
   );
 }

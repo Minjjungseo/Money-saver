@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useData } from "@/lib/context/DataContext";
 import {
   calculateAvailableToSpend,
+  calculateAvailableToSpendReadiness,
   calculateCategoryBreakdown,
   calculateDailyAvailable,
   calculateMonthlyExpense,
@@ -12,12 +13,15 @@ import {
   calculateThisWeekAvailable,
   calculateUpcomingItems,
   calculateWeeklyAvailable,
+  calculateWeeklyBudgetUsage,
+  daysSinceLatestTransaction,
   getHorizonRange,
+  getLatestTransactionDate,
 } from "@/lib/calculations";
 
 export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
   const { data } = useData();
-  const { accounts, transactions, categories, recurringExpenses, plannedExpenses, plannedIncomes, settings, exchangeRates } = data;
+  const { accounts, transactions, categories, recurringExpenses, plannedExpenses, plannedIncomes, budgets, settings, exchangeRates } = data;
   const baseCurrency = settings.baseCurrency;
 
   return useMemo(() => {
@@ -44,6 +48,19 @@ export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
     const { start: horizonStart, end: horizonEnd } = getHorizonRange(now, settings.availableHorizon);
     const upcomingItems = calculateUpcomingItems(recurringExpenses, plannedExpenses, horizonStart, horizonEnd);
 
+    const readiness = calculateAvailableToSpendReadiness({
+      accounts,
+      recurringExpenses,
+      plannedExpenses,
+      plannedIncomes,
+      settings,
+    });
+
+    const weeklyBudget = calculateWeeklyBudgetUsage(transactions, budgets, now, baseCurrency, exchangeRates);
+
+    const latestTransactionDate = getLatestTransactionDate(transactions);
+    const daysBehind = daysSinceLatestTransaction(transactions, now) ?? 0;
+
     const dailyAvailable = calculateDailyAvailable(availableToSpend.availableToSpend, now);
     const weeklyAvailable = calculateWeeklyAvailable(availableToSpend.availableToSpend, now);
     const thisWeekAvailable = calculateThisWeekAvailable(availableToSpend.availableToSpend, now);
@@ -56,6 +73,10 @@ export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
       trend,
       categoryBreakdown,
       availableToSpend,
+      readiness,
+      weeklyBudget,
+      latestTransactionDate,
+      daysBehind,
       upcomingItems,
       dailyAvailable,
       weeklyAvailable,
@@ -69,6 +90,7 @@ export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
     recurringExpenses,
     plannedExpenses,
     plannedIncomes,
+    budgets,
     settings,
     exchangeRates,
     baseCurrency,

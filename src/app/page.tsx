@@ -7,9 +7,11 @@ import { useData } from "@/lib/context/DataContext";
 import { useHomeMetrics } from "@/hooks/useHomeMetrics";
 import { MonthSelector } from "@/components/home/MonthSelector";
 import { AvailableToSpendCard } from "@/components/home/AvailableToSpendCard";
+import { DataFreshnessBanner } from "@/components/home/DataFreshnessBanner";
 import { MonthSummaryRow } from "@/components/home/MonthSummaryRow";
 import { TrendChart } from "@/components/home/TrendChart";
 import { CategoryBreakdownCard } from "@/components/home/CategoryBreakdownCard";
+import { WeeklyBudgetCard } from "@/components/home/WeeklyBudgetCard";
 import { UpcomingCard } from "@/components/home/UpcomingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -54,10 +56,24 @@ export default function HomePage() {
       <Header demoActive={data.settings.demoDataActive} />
       <MonthSelector month={selectedMonth} onChange={setSelectedMonth} />
 
-      <AvailableToSpendCard breakdown={metrics.availableToSpend} currency={metrics.baseCurrency} />
+      <AvailableToSpendCard
+        breakdown={metrics.availableToSpend}
+        currency={metrics.baseCurrency}
+        readiness={metrics.readiness}
+      />
+
+      {metrics.latestTransactionDate && (
+        <div className="mb-4">
+          <DataFreshnessBanner latestDate={metrics.latestTransactionDate} daysBehind={metrics.daysBehind} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         <MonthSummaryRow income={metrics.income} expense={metrics.expense} net={metrics.net} currency={metrics.baseCurrency} />
+
+        {metrics.weeklyBudget.budgetMinor > 0 && (
+          <WeeklyBudgetCard usage={metrics.weeklyBudget} currency={metrics.baseCurrency} />
+        )}
 
         <TrendChart
           trend={metrics.trend}

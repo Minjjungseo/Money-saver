@@ -39,6 +39,14 @@ export interface Account {
   currency: CurrencyCode;
   /** Current balance in minor units of `currency`. */
   balanceMinor: number;
+  /**
+   * ISO date (yyyy-MM-dd) the balance was last confirmed by the user, or null
+   * if it has never been confirmed. A null/undefined value is NOT the same as
+   * a zero balance — it means "unknown", not "empty account". Set whenever
+   * the user saves a balance through the account form; left null by CSV
+   * import unless the file explicitly supplies a confirmation date.
+   */
+  balanceAsOfDate: string | null;
   type: AccountType;
   includeInAvailable: boolean;
   isDemo?: boolean;
@@ -88,7 +96,15 @@ export type RecurringFrequency =
   | "MONTHLY"
   | "QUARTERLY"
   | "SIX_MONTHLY"
-  | "YEARLY";
+  | "YEARLY"
+  | "CUSTOM";
+
+export type IntervalUnit = "WEEK" | "MONTH";
+
+export interface CustomInterval {
+  unit: IntervalUnit;
+  count: number;
+}
 
 export interface RecurringExpense {
   id: string;
@@ -96,6 +112,8 @@ export interface RecurringExpense {
   amountMinor: number;
   currency: CurrencyCode;
   frequency: RecurringFrequency;
+  /** Required when frequency === "CUSTOM"; ignored otherwise. e.g. every 2 months = { unit: "MONTH", count: 2 }. */
+  customInterval?: CustomInterval | null;
   nextDueDate: string; // ISO date
   essential: boolean;
   accountId: string | null;
@@ -137,12 +155,18 @@ export interface PlannedIncome {
   updatedAt: string;
 }
 
-/** Reserved for future per-category monthly budgets. Minimal for V1. */
+export type BudgetPeriod = "WEEKLY" | "MONTHLY";
+
+/** A simple spending target for a period, optionally scoped to one category. */
 export interface Budget {
   id: string;
-  categoryId: string;
-  monthlyLimitMinor: number;
+  name: string;
+  amountMinor: number;
   currency: CurrencyCode;
+  period: BudgetPeriod;
+  categoryId: string | null;
+  active: boolean;
+  isDemo?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +204,8 @@ export interface Settings {
   baseCurrency: CurrencyCode;
   reserveMinor: number;
   reserveCurrency: CurrencyCode;
+  /** Whether the user has explicitly reviewed/saved the reserve amount, vs. it just being the untouched default. */
+  reserveConfirmed: boolean;
   availableHorizon: AvailableHorizon;
   hasSeenDemoNotice: boolean;
   demoDataActive: boolean;

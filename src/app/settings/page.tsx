@@ -11,6 +11,7 @@ import { ExchangeRateEditor } from "@/components/accounts/ExchangeRateEditor";
 import { ReserveCard } from "@/components/plan/ReserveCard";
 import { CategoryManager } from "@/components/settings/CategoryManager";
 import { MerchantRulesManager } from "@/components/settings/MerchantRulesManager";
+import { BudgetManager } from "@/components/settings/BudgetManager";
 import { downloadTextFile } from "@/lib/download";
 import { accountsToCsv, transactionsToCsv } from "@/lib/csv";
 import type { CurrencyCode } from "@/types";
@@ -76,6 +77,10 @@ export default function SettingsPage() {
 
       <Section title="남겨둘 돈">
         <ReserveCard />
+      </Section>
+
+      <Section title="예산">
+        <BudgetManager />
       </Section>
 
       <Section title="카테고리">

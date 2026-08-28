@@ -13,7 +13,7 @@ import { RecurringExpenseFormSheet } from "@/components/plan/RecurringExpenseFor
 import { PlannedExpenseFormSheet } from "@/components/plan/PlannedExpenseFormSheet";
 import { PlannedIncomeFormSheet } from "@/components/plan/PlannedIncomeFormSheet";
 import { formatMoney } from "@/lib/money";
-import { FREQUENCY_LABELS, PLANNED_EXPENSE_STATUS_LABELS } from "@/lib/labels";
+import { PLANNED_EXPENSE_STATUS_LABELS, describeFrequency } from "@/lib/labels";
 import type { PlannedExpense, PlannedIncome, RecurringExpense } from "@/types";
 
 function SectionHeader({ title, onAdd }: { title: string; onAdd: () => void }) {
@@ -69,7 +69,7 @@ export default function PlanPage() {
                       {r.essential && <Badge tone="accent">필수</Badge>}
                     </div>
                     <p className="text-[12px] text-ink-muted">
-                      {FREQUENCY_LABELS[r.frequency]} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
+                      {describeFrequency(r)} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
                     </p>
                   </div>
                   <span className="text-[14px] font-medium tabular-nums text-ink">

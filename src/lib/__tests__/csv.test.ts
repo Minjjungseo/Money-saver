@@ -26,6 +26,7 @@ describe("transactions CSV round trip", () => {
     bank: "CBA",
     currency: "AUD",
     balanceMinor: toMinorUnits(1000, "AUD"),
+    balanceAsOfDate: null,
     type: "CHECKING",
     includeInAvailable: true,
     createdAt: "",
@@ -83,6 +84,7 @@ describe("accounts CSV round trip", () => {
       bank: "KB Kookmin",
       currency: "KRW",
       balanceMinor: toMinorUnits(3200000, "KRW"),
+      balanceAsOfDate: "2026-08-19",
       type: "SAVINGS",
       includeInAvailable: true,
       createdAt: "",
@@ -96,6 +98,7 @@ describe("accounts CSV round trip", () => {
       bank: "KB Kookmin",
       currency: "KRW",
       balanceMinor: toMinorUnits(3200000, "KRW"),
+      balanceAsOfDate: "2026-08-19",
       type: "SAVINGS",
       includeInAvailable: true,
     });

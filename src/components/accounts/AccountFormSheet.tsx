@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
@@ -32,6 +33,7 @@ function AccountForm({ editing, onDone }: { editing: Account | null; onDone: () 
   const [bank, setBank] = useState(editing?.bank ?? "");
   const [currency, setCurrency] = useState<CurrencyCode>(editing?.currency ?? "AUD");
   const [balance, setBalance] = useState(editing ? String(toMajorUnits(editing.balanceMinor, editing.currency)) : "");
+  const [balanceAsOfDate, setBalanceAsOfDate] = useState(editing?.balanceAsOfDate ?? "");
   const [type, setType] = useState<AccountType>(editing?.type ?? "CHECKING");
   const [includeInAvailable, setIncludeInAvailable] = useState(editing?.includeInAvailable ?? true);
 
@@ -44,6 +46,7 @@ function AccountForm({ editing, onDone }: { editing: Account | null; onDone: () 
       bank: bank.trim(),
       currency,
       balanceMinor: toMinorUnits(Number(balance), currency),
+      balanceAsOfDate: balanceAsOfDate.trim() || null,
       type,
       includeInAvailable,
     };
@@ -82,6 +85,18 @@ function AccountForm({ editing, onDone }: { editing: Account | null; onDone: () 
           <Label>현재 잔고 *</Label>
           <Input inputMode="decimal" placeholder="0.00" value={balance} onChange={(e) => setBalance(e.target.value)} />
         </div>
+      </div>
+      <div>
+        <Label>마지막 확인일</Label>
+        <div className="flex gap-2">
+          <Input type="date" value={balanceAsOfDate} onChange={(e) => setBalanceAsOfDate(e.target.value)} className="flex-1" />
+          <Button type="button" variant="secondary" onClick={() => setBalanceAsOfDate(format(new Date(), "yyyy-MM-dd"))}>
+            오늘
+          </Button>
+        </div>
+        <p className="mt-1 text-[12px] text-ink-faint">
+          비워두면 잔액 미확인 상태로 표시돼요. 은행 앱에서 실제 잔고를 확인한 날짜를 입력해주세요.
+        </p>
       </div>
       <div>
         <Label>계좌 종류</Label>

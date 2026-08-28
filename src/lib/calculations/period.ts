@@ -1,5 +1,5 @@
 import { addDays, differenceInCalendarDays, endOfMonth, endOfWeek, startOfDay, startOfMonth } from "date-fns";
-import type { AvailableHorizon } from "@/types";
+import type { AvailableHorizon, Transaction } from "@/types";
 
 export function getMonthRange(monthDate: Date): { start: Date; end: Date } {
   return { start: startOfMonth(monthDate), end: endOfMonth(monthDate) };
@@ -41,4 +41,17 @@ export function getHorizonRange(
     default:
       return { start, end: endOfMonth(referenceDate) };
   }
+}
+
+/** Most recent transaction date (ISO yyyy-MM-dd), or null if there are no transactions. */
+export function getLatestTransactionDate(transactions: Transaction[]): string | null {
+  if (transactions.length === 0) return null;
+  return transactions.reduce((latest, t) => (t.date > latest ? t.date : latest), transactions[0].date);
+}
+
+/** Whole days between the latest transaction date and referenceDate (0 if up to date, negative never happens in practice). */
+export function daysSinceLatestTransaction(transactions: Transaction[], referenceDate: Date): number | null {
+  const latest = getLatestTransactionDate(transactions);
+  if (!latest) return null;
+  return differenceInCalendarDays(startOfDay(referenceDate), startOfDay(new Date(`${latest}T00:00:00`)));
 }

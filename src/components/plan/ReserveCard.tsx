@@ -5,6 +5,7 @@ import { Pencil, Check, ShieldCheck } from "lucide-react";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits, formatMoney } from "@/lib/money";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 
 export function ReserveCard() {
   const { data, updateSettings } = useData();
@@ -14,7 +15,7 @@ export function ReserveCard() {
   function save() {
     const parsed = Number(value);
     if (!isNaN(parsed) && parsed >= 0) {
-      updateSettings({ reserveMinor: toMinorUnits(parsed, data.settings.reserveCurrency) });
+      updateSettings({ reserveMinor: toMinorUnits(parsed, data.settings.reserveCurrency), reserveConfirmed: true });
     }
     setEditing(false);
   }
@@ -27,7 +28,10 @@ export function ReserveCard() {
             <ShieldCheck size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-ink-muted">남겨둘 돈</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[13px] font-medium text-ink-muted">남겨둘 돈</p>
+              {!data.settings.reserveConfirmed && <Badge tone="warn">설정 필요</Badge>}
+            </div>
             <p className="text-[12px] text-ink-faint">절대 쓰지 않을 금액</p>
           </div>
         </div>
