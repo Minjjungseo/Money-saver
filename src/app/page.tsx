@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Settings as SettingsIcon, Wallet } from "lucide-react";
 import { useData } from "@/lib/context/DataContext";
+import { hasDemoData } from "@/lib/demoData";
 import { useHomeMetrics } from "@/hooks/useHomeMetrics";
 import { MonthSelector } from "@/components/home/MonthSelector";
 import { AvailableToSpendCard } from "@/components/home/AvailableToSpendCard";
@@ -32,7 +33,7 @@ export default function HomePage() {
   if (data.accounts.length === 0) {
     return (
       <div className="px-5 pt-8">
-        <Header demoActive={false} />
+        <Header demoActive={hasDemoData(data)} />
         <div className="mt-8">
           <EmptyState
             icon={<Wallet size={28} />}
@@ -53,7 +54,7 @@ export default function HomePage() {
 
   return (
     <div className="pt-6">
-      <Header demoActive={data.settings.demoDataActive} />
+      <Header demoActive={hasDemoData(data)} />
       <MonthSelector month={selectedMonth} onChange={setSelectedMonth} />
 
       <AvailableToSpendCard

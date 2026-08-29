@@ -422,6 +422,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         plannedExpenses: prev.plannedExpenses.filter((p) => !p.isDemo),
         plannedIncomes: prev.plannedIncomes.filter((p) => !p.isDemo),
         budgets: prev.budgets.filter((b) => !b.isDemo),
+        merchantRules: prev.merchantRules.filter((m) => !m.isDemo),
         settings: { ...prev.settings, demoDataActive: false },
       };
       repository.saveAccounts(next.accounts);
@@ -430,6 +431,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       repository.savePlannedExpenses(next.plannedExpenses);
       repository.savePlannedIncomes(next.plannedIncomes);
       repository.saveBudgets(next.budgets);
+      repository.saveMerchantRules(next.merchantRules);
       repository.saveSettings(next.settings);
       return next;
     });

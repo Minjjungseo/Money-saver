@@ -2,6 +2,7 @@ import type {
   Account,
   AppData,
   Budget,
+  MerchantRule,
   PlannedExpense,
   PlannedIncome,
   RecurringExpense,
@@ -484,6 +485,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
         categoryId: cat("groceries"),
         subcategory: null,
         confidence: 5,
+        isDemo: true,
         createdAt: nowIso,
         updatedAt: nowIso,
       },
@@ -493,6 +495,7 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
         categoryId: cat("groceries"),
         subcategory: null,
         confidence: 5,
+        isDemo: true,
         createdAt: nowIso,
         updatedAt: nowIso,
       },
@@ -502,10 +505,11 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
         categoryId: cat("car"),
         subcategory: "주유",
         confidence: 5,
+        isDemo: true,
         createdAt: nowIso,
         updatedAt: nowIso,
       },
-    ],
+    ] satisfies MerchantRule[],
     exchangeRates: [{ pair: "AUD_KRW", rate: 900, updatedAt: nowIso }],
     settings: {
       ...DEFAULT_SETTINGS,
@@ -514,6 +518,25 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
       demoDataActive: true,
     },
   };
+}
+
+/**
+ * Whether any demo/example data is actually present right now, checked by
+ * the explicit `isDemo` flag on each record — never inferred from values
+ * looking similar to real data. Used to drive the "예시 데이터" badge and the
+ * "예시 데이터 지우기" button so they reflect real state even if demo items
+ * were removed one at a time rather than via clearDemoData().
+ */
+export function hasDemoData(data: AppData): boolean {
+  return (
+    data.accounts.some((a) => a.isDemo) ||
+    data.transactions.some((t) => t.isDemo) ||
+    data.recurringExpenses.some((r) => r.isDemo) ||
+    data.plannedExpenses.some((p) => p.isDemo) ||
+    data.plannedIncomes.some((p) => p.isDemo) ||
+    data.budgets.some((b) => b.isDemo) ||
+    data.merchantRules.some((m) => m.isDemo)
+  );
 }
 
 function nextWeekday(from: Date, weekday: number): Date {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, Download, Upload } from "lucide-react";
 import { useData } from "@/lib/context/DataContext";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
+import { hasDemoData } from "@/lib/demoData";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { ExchangeRateEditor } from "@/components/accounts/ExchangeRateEditor";
@@ -110,7 +111,7 @@ export default function SettingsPage() {
 
       <Section title="예시 데이터">
         <div className="flex flex-col gap-2">
-          {data.settings.demoDataActive && (
+          {hasDemoData(data) && (
             <Button variant="outline" onClick={clearDemoData}>
               예시 데이터 지우기
             </Button>

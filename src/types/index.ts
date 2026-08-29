@@ -187,6 +187,7 @@ export interface MerchantRule {
   subcategory: string | null;
   /** How many times this rule has been confirmed by a user correction. */
   confidence: number;
+  isDemo?: boolean;
   createdAt: string;
   updatedAt: string;
 }
