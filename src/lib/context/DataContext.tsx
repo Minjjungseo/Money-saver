@@ -26,6 +26,7 @@ import { repository, DEFAULT_SETTINGS } from "@/lib/repository";
 import { buildDemoData } from "@/lib/demoData";
 import { buildDefaultCategories } from "@/lib/defaultCategories";
 import { generateId, nowIso } from "@/lib/id";
+import { DATA_MIGRATION_TARGET_VERSION, runDataMigration } from "@/lib/migrations/dataMigration";
 
 const INIT_FLAG_KEY = "money-os:v1:initialized";
 
@@ -123,7 +124,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setData(demo);
       } else {
         if (typeof window !== "undefined") window.localStorage.setItem(INIT_FLAG_KEY, "true");
-        if (!cancelled) setData(loaded);
+
+        let finalData = loaded;
+        if ((loaded.settings.dataMigrationVersion ?? 0) < DATA_MIGRATION_TARGET_VERSION) {
+          try {
+            const { data: migrated, summary } = runDataMigration(loaded);
+            finalData = {
+              ...migrated,
+              settings: {
+                ...migrated.settings,
+                dataMigrationVersion: DATA_MIGRATION_TARGET_VERSION,
+                dataMigrationSummary: summary,
+              },
+            };
+            await Promise.all([
+              repository.saveTransactions(finalData.transactions),
+              repository.saveRecurringExpenses(finalData.recurringExpenses),
+              repository.saveBudgets(finalData.budgets),
+              repository.saveSettings(finalData.settings),
+            ]);
+          } catch (err) {
+            // Never advance dataMigrationVersion on failure — the migration
+            // retries on the next load. loaded (pre-migration) data is used
+            // as-is so a migration bug never blocks the app from opening.
+            console.error("Money OS data migration failed; will retry on next load.", err);
+            finalData = loaded;
+          }
+        }
+        if (!cancelled) setData(finalData);
       }
       if (!cancelled) setLoading(false);
     })();

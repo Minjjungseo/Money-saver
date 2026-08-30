@@ -284,6 +284,47 @@ export interface ExchangeRate {
 
 export type AvailableHorizon = "END_OF_MONTH" | "30_DAYS" | "90_DAYS";
 
+/**
+ * Result of the one-time production data migration (see
+ * lib/migrations/dataMigration.ts) that backfills category/scope/behavior
+ * onto transactions already sitting in a user's persistent store, upserts
+ * the real RecurringExpense catalog, and preserves any existing living
+ * budget. Stored on Settings so a person can confirm on their own device,
+ * via the Settings screen, that the migration actually ran — see §9/§10 of
+ * the migration spec: this is evidence of local execution, not of anything
+ * that ran in a test environment.
+ */
+export interface DataMigrationSummary {
+  version: number;
+  ranAt: string;
+  /** Total transactions present in the store when the migration ran. */
+  transactionsTotal: number;
+  /** Size of the embedded canonical dataset (611). */
+  canonicalTotal: number;
+  /** Canonical rows successfully matched to an existing transaction. */
+  matched: number;
+  /** Canonical rows with no matching existing transaction — never guessed/created. */
+  unmatched: number;
+  /** Matched transactions whose stored fields actually changed. */
+  updated: number;
+  /** Always 0 — this migration only backfills fields, never creates transactions. */
+  created: number;
+  /** Always 0 — this migration never deletes transactions. */
+  deleted: number;
+  /** Matched transactions that received a non-null categoryId. */
+  categorizedCount: number;
+  /** Matched transactions left uncategorized on purpose (source has no category, e.g. 자산이동). */
+  uncategorizedCount: number;
+  /** Transactions (matched by this migration) with expenseBehavior === "FIXED". */
+  fixedCount: number;
+  /** fixedCount broken down by yyyy-MM. */
+  fixedCountByMonth: Record<string, number>;
+  /** RecurringExpense catalog items created or updated (upsert-by-name; never duplicated). */
+  recurringExpensesUpserted: number;
+  /** True only if no "생활비" budget existed yet and the default was created; false when the user's existing budget was preserved untouched. */
+  budgetCreated: boolean;
+}
+
 export interface Settings {
   baseCurrency: CurrencyCode;
   reserveMinor: number;
@@ -293,6 +334,10 @@ export interface Settings {
   availableHorizon: AvailableHorizon;
   hasSeenDemoNotice: boolean;
   demoDataActive: boolean;
+  /** One-time migration version already applied to this store; 0 = never run. See lib/migrations/dataMigration.ts. */
+  dataMigrationVersion: number;
+  /** Diagnostic summary of the most recent migration run, or null if none has run yet. */
+  dataMigrationSummary?: DataMigrationSummary | null;
 }
 
 export interface AppData {

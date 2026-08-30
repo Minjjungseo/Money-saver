@@ -26,6 +26,8 @@ export const DEFAULT_SETTINGS: Settings = {
   availableHorizon: "END_OF_MONTH",
   hasSeenDemoNotice: false,
   demoDataActive: false,
+  dataMigrationVersion: 0,
+  dataMigrationSummary: null,
 };
 
 function readJson<T>(key: string, fallback: T): T {

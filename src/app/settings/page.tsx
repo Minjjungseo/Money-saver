@@ -16,6 +16,7 @@ import { BudgetManager } from "@/components/settings/BudgetManager";
 import { downloadTextFile } from "@/lib/download";
 import { accountsToCsv, transactionsToCsv } from "@/lib/csv";
 import type { CurrencyCode } from "@/types";
+import { MigrationStatusCard } from "@/components/settings/MigrationStatusCard";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -125,6 +126,10 @@ export default function SettingsPage() {
             </button>
           )}
         </div>
+      </Section>
+
+      <Section title="마이그레이션 상태">
+        <MigrationStatusCard />
       </Section>
 
       <p className="px-5 pb-6 text-center text-[12px] text-ink-faint">Money OS · 모든 데이터는 이 기기에만 저장돼요</p>
