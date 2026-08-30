@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
-import { FREQUENCY_LABELS, INTERVAL_UNIT_LABELS } from "@/lib/labels";
-import type { CurrencyCode, IntervalUnit, RecurringExpense, RecurringFrequency } from "@/types";
+import { FREQUENCY_LABELS, INTERVAL_UNIT_LABELS, LIVING_BUDGET_IMPACT_LABELS } from "@/lib/labels";
+import type { CurrencyCode, IntervalUnit, LivingBudgetImpact, RecurringExpense, RecurringFrequency } from "@/types";
 
 const CUSTOM_INTERVAL_COUNTS = [1, 2, 3, 6, 12];
 
@@ -41,6 +41,11 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
   const [essential, setEssential] = useState(editing?.essential ?? true);
   const [accountId, setAccountId] = useState(editing?.accountId ?? data.accounts[0]?.id ?? "");
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? "");
+  const [paymentNote, setPaymentNote] = useState(editing?.paymentNote ?? "");
+  const [actualCycleNote, setActualCycleNote] = useState(editing?.actualCycleNote ?? "");
+  const [livingBudgetImpact, setLivingBudgetImpact] = useState<LivingBudgetImpact | "">(
+    editing?.livingBudgetImpact ?? ""
+  );
 
   const canSave = name.trim() !== "" && amount.trim() !== "" && !isNaN(Number(amount)) && nextDueDate !== "";
 
@@ -55,6 +60,9 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
       nextDueDate,
       essential,
       accountId: accountId || null,
+      paymentNote: paymentNote.trim() || null,
+      actualCycleNote: actualCycleNote.trim() || null,
+      livingBudgetImpact: livingBudgetImpact || null,
       startDate: editing?.startDate ?? nextDueDate,
       endDate: editing?.endDate ?? null,
       categoryId: categoryId || null,
@@ -140,6 +148,27 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
           {data.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>결제 메모 (선택)</Label>
+        <Input placeholder="예: 신한은행에서 결제" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
+        <p className="mt-1 text-[12px] text-ink-faint">위 계좌 외에 실제 결제/정산이 이루어지는 곳이 따로 있다면 적어주세요.</p>
+      </div>
+      <div>
+        <Label>실제 결제 주기 메모 (선택)</Label>
+        <Input placeholder="예: 실제 2주마다 A$29.90" value={actualCycleNote} onChange={(e) => setActualCycleNote(e.target.value)} />
+        <p className="mt-1 text-[12px] text-ink-faint">위 금액이 월평균 환산액일 때, 실제 결제 주기와 금액을 적어주세요.</p>
+      </div>
+      <div>
+        <Label>생활비 구분</Label>
+        <Select value={livingBudgetImpact} onChange={(e) => setLivingBudgetImpact(e.target.value as LivingBudgetImpact | "")}>
+          <option value="">구분 없음</option>
+          {(Object.keys(LIVING_BUDGET_IMPACT_LABELS) as LivingBudgetImpact[]).map((v) => (
+            <option key={v} value={v}>
+              {LIVING_BUDGET_IMPACT_LABELS[v]}
             </option>
           ))}
         </Select>

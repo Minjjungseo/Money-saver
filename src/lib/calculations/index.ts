@@ -8,3 +8,4 @@ export * from "./availableToSpend";
 export * from "./insights";
 export * from "./readiness";
 export * from "./budget";
+export * from "./fixedCosts";

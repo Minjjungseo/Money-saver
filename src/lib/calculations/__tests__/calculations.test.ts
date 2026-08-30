@@ -21,6 +21,7 @@ import {
   calculateUpcomingEssentialExpenses,
   calculateConfirmedIncoming,
   calculateWeeklyBudgetUsage,
+  calculateFixedCostSummary,
   expandRecurringOccurrences,
   getHorizonRange,
   getLatestTransactionDate,
@@ -551,5 +552,73 @@ describe("data freshness", () => {
   it("is zero when the latest transaction is today", () => {
     const transactions = [tx({ date: "2026-08-28" })];
     expect(daysSinceLatestTransaction(transactions, new Date(2026, 7, 28, 18, 30))).toBe(0);
+  });
+});
+
+describe("fixed cost summary", () => {
+  function recurring(partial: Partial<RecurringExpense>): RecurringExpense {
+    return {
+      id: partial.id ?? "r1",
+      name: "Item",
+      amountMinor: toMinorUnits(100, "AUD"),
+      currency: "AUD",
+      frequency: "MONTHLY",
+      nextDueDate: "2026-09-01",
+      essential: true,
+      accountId: null,
+      startDate: "2026-01-01",
+      endDate: null,
+      categoryId: null,
+      createdAt: "",
+      updatedAt: "",
+      ...partial,
+    };
+  }
+
+  const monthlyBudget: Budget = {
+    id: "b1",
+    name: "생활비",
+    amountMinor: toMinorUnits(2_000_000, "KRW"),
+    currency: "KRW",
+    period: "MONTHLY",
+    categoryId: null,
+    active: true,
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  it("sums INCLUDED items per currency and leaves SEPARATE items out of the living-budget math", () => {
+    const items = [
+      recurring({ id: "r1", amountMinor: toMinorUnits(789, "AUD"), currency: "AUD", livingBudgetImpact: "INCLUDED" }),
+      recurring({ id: "r2", amountMinor: toMinorUnits(96_900, "KRW"), currency: "KRW", livingBudgetImpact: "INCLUDED" }),
+      recurring({ id: "r3", amountMinor: toMinorUnits(2_817, "AUD"), currency: "AUD", livingBudgetImpact: "SEPARATE" }),
+    ];
+    const summary = calculateFixedCostSummary(items, [monthlyBudget], "KRW", RATES);
+
+    expect(summary.includedByCurrency.AUD).toBe(toMinorUnits(789, "AUD"));
+    expect(summary.includedByCurrency.KRW).toBe(toMinorUnits(96_900, "KRW"));
+    expect(summary.separateByCurrency.AUD).toBe(toMinorUnits(2_817, "AUD"));
+    expect(summary.separateByCurrency.KRW).toBeUndefined();
+
+    const expectedTotal = toMinorUnits(789 * 900 + 96_900, "KRW");
+    expect(summary.includedTotalBaseMinor).toBe(expectedTotal);
+
+    expect(summary.monthlyBudgetMinor).toBe(toMinorUnits(2_000_000, "KRW"));
+    expect(summary.variableRemainingMinor).toBe(toMinorUnits(2_000_000, "KRW") - expectedTotal);
+  });
+
+  it("ignores items with no living-budget classification", () => {
+    const items = [recurring({ livingBudgetImpact: null })];
+    const summary = calculateFixedCostSummary(items, [], "KRW", RATES);
+    expect(summary.includedByCurrency).toEqual({});
+    expect(summary.separateByCurrency).toEqual({});
+    expect(summary.includedTotalBaseMinor).toBe(0);
+  });
+
+  it("returns a null budget/remaining when no active monthly budget exists", () => {
+    const items = [recurring({ livingBudgetImpact: "INCLUDED" })];
+    const summary = calculateFixedCostSummary(items, [{ ...monthlyBudget, active: false }], "KRW", RATES);
+    expect(summary.monthlyBudgetMinor).toBeNull();
+    expect(summary.variableRemainingMinor).toBeNull();
   });
 });

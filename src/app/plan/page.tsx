@@ -12,8 +12,10 @@ import { ReserveCard } from "@/components/plan/ReserveCard";
 import { RecurringExpenseFormSheet } from "@/components/plan/RecurringExpenseFormSheet";
 import { PlannedExpenseFormSheet } from "@/components/plan/PlannedExpenseFormSheet";
 import { PlannedIncomeFormSheet } from "@/components/plan/PlannedIncomeFormSheet";
+import { FixedCostSummaryCard } from "@/components/plan/FixedCostSummaryCard";
 import { formatMoney } from "@/lib/money";
-import { PLANNED_EXPENSE_STATUS_LABELS, describeFrequency } from "@/lib/labels";
+import { PLANNED_EXPENSE_STATUS_LABELS, LIVING_BUDGET_IMPACT_LABELS, describeFrequency } from "@/lib/labels";
+import { calculateFixedCostSummary } from "@/lib/calculations/fixedCosts";
 import type { PlannedExpense, PlannedIncome, RecurringExpense } from "@/types";
 
 function SectionHeader({ title, onAdd }: { title: string; onAdd: () => void }) {
@@ -36,6 +38,14 @@ export default function PlanPage() {
   const recurring = [...data.recurringExpenses].sort((a, b) => (a.nextDueDate < b.nextDueDate ? -1 : 1));
   const planned = [...data.plannedExpenses].sort((a, b) => (a.date < b.date ? -1 : 1));
   const incomes = [...data.plannedIncomes].sort((a, b) => (a.expectedDate < b.expectedDate ? -1 : 1));
+  const fixedCostSummary = calculateFixedCostSummary(
+    data.recurringExpenses,
+    data.budgets,
+    data.settings.baseCurrency,
+    data.exchangeRates
+  );
+  const hasFixedCostData =
+    Object.keys(fixedCostSummary.includedByCurrency).length > 0 || Object.keys(fixedCostSummary.separateByCurrency).length > 0;
 
   return (
     <div className="flex flex-col gap-6 pt-6">
@@ -44,6 +54,12 @@ export default function PlanPage() {
       <div className="px-5">
         <ReserveCard />
       </div>
+
+      {hasFixedCostData && (
+        <div className="px-5">
+          <FixedCostSummaryCard summary={fixedCostSummary} />
+        </div>
+      )}
 
       <section className="flex flex-col gap-2">
         <SectionHeader title="정기 지출" onAdd={() => setRecurringForm({ open: true, editing: null })} />
@@ -57,26 +73,37 @@ export default function PlanPage() {
             />
           ) : (
             <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
-              {recurring.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRecurringForm({ open: true, editing: r })}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left"
-                >
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[14px] font-medium text-ink">{r.name}</p>
-                      {r.essential && <Badge tone="accent">필수</Badge>}
+              {recurring.map((r) => {
+                const account = data.accounts.find((a) => a.id === r.accountId);
+                const paymentLabel = [account?.name, r.paymentNote].filter(Boolean).join(" · ");
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setRecurringForm({ open: true, editing: r })}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-[14px] font-medium text-ink">{r.name}</p>
+                        {r.essential && <Badge tone="accent">필수</Badge>}
+                        {r.livingBudgetImpact && (
+                          <Badge tone={r.livingBudgetImpact === "SEPARATE" ? "warn" : "neutral"}>
+                            {LIVING_BUDGET_IMPACT_LABELS[r.livingBudgetImpact]}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-ink-muted">
+                        {describeFrequency(r)} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
+                      </p>
+                      {paymentLabel && <p className="text-[12px] text-ink-muted">{paymentLabel}</p>}
+                      {r.actualCycleNote && <p className="text-[12px] text-ink-faint">{r.actualCycleNote}</p>}
                     </div>
-                    <p className="text-[12px] text-ink-muted">
-                      {describeFrequency(r)} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
-                    </p>
-                  </div>
-                  <span className="text-[14px] font-medium tabular-nums text-ink">
-                    {formatMoney(r.amountMinor, r.currency)}
-                  </span>
-                </button>
-              ))}
+                    <span className="shrink-0 text-[14px] font-medium tabular-nums text-ink">
+                      {formatMoney(r.amountMinor, r.currency)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

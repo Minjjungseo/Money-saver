@@ -106,9 +106,19 @@ export interface CustomInterval {
   count: number;
 }
 
+/**
+ * Whether an item counts toward the household's regular monthly living-cost
+ * budget ("생활비 포함"), or is tracked separately from it ("생활비 별도") —
+ * e.g. rent is a large fixed cost the household budgets for on its own,
+ * outside the day-to-day living budget. Undefined/null means "not classified"
+ * and the item is left out of the fixed-cost summary entirely.
+ */
+export type LivingBudgetImpact = "INCLUDED" | "SEPARATE";
+
 export interface RecurringExpense {
   id: string;
   name: string;
+  /** Monthly-equivalent amount. For an item whose real billing cycle isn't monthly, this is the monthly average — see `actualCycleNote` for the real cycle/amount. */
   amountMinor: number;
   currency: CurrencyCode;
   frequency: RecurringFrequency;
@@ -117,6 +127,21 @@ export interface RecurringExpense {
   nextDueDate: string; // ISO date
   essential: boolean;
   accountId: string | null;
+  /**
+   * Free-text note on where payment actually settles, for cases the single
+   * `accountId` can't express, e.g. a credit card billed to a bank that isn't
+   * itself a modeled Account ("신한은행에서 결제"). Null when accountId alone
+   * is a complete description.
+   */
+  paymentNote?: string | null;
+  /**
+   * Free-text note on the real (non-monthly) billing cycle and amount when
+   * `amountMinor` is a monthly average, e.g. "실제 2주마다 A$29.90". Null when
+   * `amountMinor` already reflects the true billing cycle.
+   */
+  actualCycleNote?: string | null;
+  /** How this item counts toward the monthly living budget; see LivingBudgetImpact. */
+  livingBudgetImpact?: LivingBudgetImpact | null;
   startDate: string;
   endDate: string | null;
   categoryId: string | null;

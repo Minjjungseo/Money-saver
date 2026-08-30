@@ -6,6 +6,7 @@
  */
 import type {
   AccountType,
+  LivingBudgetImpact,
   PlannedExpenseStatus,
   RecurringExpense,
   RecurringFrequency,
@@ -60,6 +61,11 @@ export function describeFrequency(recurring: Pick<RecurringExpense, "frequency" 
   const interval = recurring.customInterval ?? { unit: "MONTH" as const, count: 1 };
   return `${interval.count}${INTERVAL_UNIT_LABELS[interval.unit]}마다`;
 }
+
+export const LIVING_BUDGET_IMPACT_LABELS: Record<LivingBudgetImpact, string> = {
+  INCLUDED: "생활비 포함",
+  SEPARATE: "생활비 별도",
+};
 
 export const PLANNED_EXPENSE_STATUS_LABELS: Record<PlannedExpenseStatus, string> = {
   PLANNED: "예정",
