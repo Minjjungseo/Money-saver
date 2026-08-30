@@ -6,6 +6,7 @@
  */
 import type {
   AccountType,
+  BudgetNature,
   LivingBudgetImpact,
   PlannedExpenseStatus,
   RecurringExpense,
@@ -65,6 +66,14 @@ export function describeFrequency(recurring: Pick<RecurringExpense, "frequency" 
 export const LIVING_BUDGET_IMPACT_LABELS: Record<LivingBudgetImpact, string> = {
   INCLUDED: "생활비 포함",
   SEPARATE: "생활비 별도",
+};
+
+export const BUDGET_NATURE_LABELS: Record<BudgetNature, string> = {
+  LIVING: "생활비",
+  FIXED: "고정비",
+  BUSINESS: "사업비",
+  SEPARATE: "별도자금",
+  TRANSFER: "자산이동",
 };
 
 export const PLANNED_EXPENSE_STATUS_LABELS: Record<PlannedExpenseStatus, string> = {

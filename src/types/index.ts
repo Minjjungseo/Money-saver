@@ -66,6 +66,16 @@ export interface Category {
 
 export type TransactionSource = "MANUAL" | "IMAGE_IMPORT" | "CSV_IMPORT" | "JSON_IMPORT";
 
+/**
+ * What a transaction's spend counts toward, independent of its category:
+ * day-to-day living spend, a household fixed cost, a business expense, a
+ * large separately-funded item (rent, tuition), or money just moving between
+ * the user's own accounts. Drives the household's monthly living-budget math,
+ * which category alone can't (e.g. "식료품" is always LIVING, but "육아" could
+ * be a LIVING purchase or a FIXED recurring activity fee).
+ */
+export type BudgetNature = "LIVING" | "FIXED" | "BUSINESS" | "SEPARATE" | "TRANSFER";
+
 export interface Transaction {
   id: string;
   date: string; // ISO date (yyyy-MM-dd)
@@ -85,6 +95,8 @@ export interface Transaction {
   originalFileRef: string | null;
   /** For TRANSFER: the counterpart account, if known. */
   transferAccountId?: string | null;
+  /** Explicit override; when null/undefined it's inferred from categoryId — see resolveBudgetNature(). */
+  budgetNature?: BudgetNature | null;
   isDemo?: boolean;
   createdAt: string;
   updatedAt: string;

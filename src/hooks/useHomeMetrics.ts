@@ -3,10 +3,14 @@
 import { useMemo } from "react";
 import { useData } from "@/lib/context/DataContext";
 import {
+  calculateAllAccountsTotal,
   calculateAvailableToSpend,
   calculateAvailableToSpendReadiness,
+  calculateBudgetNatureTotals,
   calculateCategoryBreakdown,
   calculateDailyAvailable,
+  calculateFixedCostSummary,
+  calculateLivingSpendByBucket,
   calculateMonthlyExpense,
   calculateMonthlyIncome,
   calculateMonthlyTrend,
@@ -58,12 +62,27 @@ export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
 
     const weeklyBudget = calculateWeeklyBudgetUsage(transactions, budgets, now, baseCurrency, exchangeRates);
 
+    const fixedCostSummary = calculateFixedCostSummary(recurringExpenses, budgets, baseCurrency, exchangeRates);
+    const natureTotals = calculateBudgetNatureTotals(transactions, categories, selectedMonth, baseCurrency, exchangeRates);
+    const livingSpendByBucket = calculateLivingSpendByBucket(transactions, categories, selectedMonth, baseCurrency, exchangeRates);
+    const accountBalanceTotal = calculateAllAccountsTotal(accounts, baseCurrency, exchangeRates);
+
+    const monthlyLivingBudgetMinor = fixedCostSummary.monthlyBudgetMinor;
+    const fixedBudgetMinor = fixedCostSummary.includedTotalBaseMinor;
+    const variableBudgetMinor = monthlyLivingBudgetMinor === null ? 0 : monthlyLivingBudgetMinor - fixedBudgetMinor;
+    const livingUsedMinor = natureTotals.FIXED + natureTotals.LIVING;
+    // Prefer the new living-budget remaining once a monthly budget is set, so
+    // the "이번 주/이번 달 남은 생활비" pacing figures agree with the hero card
+    // above instead of the old full-balance-based Available-to-Spend total.
+    const livingRemainingMinor = monthlyLivingBudgetMinor === null ? null : monthlyLivingBudgetMinor - livingUsedMinor;
+    const pacingBaseMinor = livingRemainingMinor ?? availableToSpend.availableToSpend;
+
     const latestTransactionDate = getLatestTransactionDate(transactions);
     const daysBehind = daysSinceLatestTransaction(transactions, now) ?? 0;
 
-    const dailyAvailable = calculateDailyAvailable(availableToSpend.availableToSpend, now);
-    const weeklyAvailable = calculateWeeklyAvailable(availableToSpend.availableToSpend, now);
-    const thisWeekAvailable = calculateThisWeekAvailable(availableToSpend.availableToSpend, now);
+    const dailyAvailable = calculateDailyAvailable(pacingBaseMinor, now);
+    const weeklyAvailable = calculateWeeklyAvailable(pacingBaseMinor, now);
+    const thisWeekAvailable = calculateThisWeekAvailable(pacingBaseMinor, now);
 
     return {
       baseCurrency,
@@ -75,13 +94,22 @@ export function useHomeMetrics(selectedMonth: Date, now: Date = new Date()) {
       availableToSpend,
       readiness,
       weeklyBudget,
+      fixedCostSummary,
+      natureTotals,
+      livingSpendByBucket,
+      accountBalanceTotal,
+      monthlyLivingBudgetMinor,
+      fixedBudgetMinor,
+      variableBudgetMinor,
+      livingUsedMinor,
       latestTransactionDate,
       daysBehind,
       upcomingItems,
       dailyAvailable,
       weeklyAvailable,
       thisWeekAvailable,
-      monthRemainingSpending: availableToSpend.availableToSpend,
+      livingRemainingMinor,
+      monthRemainingSpending: pacingBaseMinor,
     };
   }, [
     accounts,

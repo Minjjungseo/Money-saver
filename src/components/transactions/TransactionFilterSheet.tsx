@@ -4,13 +4,14 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Label, Select } from "@/components/ui/Input";
 import { TRANSACTION_TYPE_LABELS } from "@/lib/labels";
-import type { Account, Category, TransactionType } from "@/types";
+import type { Account, BudgetNature, Category, TransactionType } from "@/types";
 
 export interface TransactionFilters {
   monthKey: string; // "ALL" or "yyyy-MM"
   accountId: string; // "ALL" or account id
   categoryId: string; // "ALL" or category id
   type: TransactionType | "ALL";
+  nature: BudgetNature | "ALL";
 }
 
 export function TransactionFilterSheet({
@@ -83,7 +84,7 @@ export function TransactionFilterSheet({
           <Button
             variant="secondary"
             className="flex-1"
-            onClick={() => onChange({ monthKey: "ALL", accountId: "ALL", categoryId: "ALL", type: "ALL" })}
+            onClick={() => onChange({ monthKey: "ALL", accountId: "ALL", categoryId: "ALL", type: "ALL", nature: "ALL" })}
           >
             초기화
           </Button>

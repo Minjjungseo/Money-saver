@@ -25,7 +25,7 @@ export function MonthSummaryRow({
           <p className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">{item.label}</p>
           <p
             className={cn(
-              "mt-1 text-[16px] font-semibold tabular-nums",
+              "mt-1 break-all text-[14px] font-semibold tabular-nums",
               item.tone === "accent" ? "text-accent" : "text-negative"
             )}
           >

@@ -8,8 +8,8 @@ import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
 import { useData } from "@/lib/context/DataContext";
 import { toMinorUnits, toMajorUnits } from "@/lib/money";
-import { TRANSACTION_TYPE_LABELS } from "@/lib/labels";
-import type { CurrencyCode, Transaction, TransactionType } from "@/types";
+import { TRANSACTION_TYPE_LABELS, BUDGET_NATURE_LABELS } from "@/lib/labels";
+import type { BudgetNature, CurrencyCode, Transaction, TransactionType } from "@/types";
 
 export function ManualTransactionSheet() {
   const { mode, close, editingTransactionId } = useAddFlow();
@@ -36,6 +36,7 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
   const [accountId, setAccountId] = useState(editing?.accountId ?? data.accounts[0]?.id ?? "");
   const [date, setDate] = useState(editing?.date ?? format(new Date(), "yyyy-MM-dd"));
   const [memo, setMemo] = useState(editing?.memo ?? "");
+  const [budgetNature, setBudgetNature] = useState<BudgetNature | "">(editing?.budgetNature ?? "");
 
   const topLevelCategories = useMemo(() => data.categories.filter((c) => !c.parentId), [data.categories]);
   const subcategories = useMemo(
@@ -58,6 +59,7 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
       subcategory: subcategory || null,
       accountId: accountId || null,
       memo,
+      budgetNature: budgetNature || null,
       source: "MANUAL" as const,
       importBatchId: null,
       aiConfidence: null,
@@ -173,6 +175,17 @@ function ManualTransactionForm({ editing, onDone }: { editing: Transaction | nul
           <div>
             <Label>메모</Label>
             <Textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
+          </div>
+          <div>
+            <Label>예산 성격</Label>
+            <Select value={budgetNature} onChange={(e) => setBudgetNature(e.target.value as BudgetNature | "")}>
+              <option value="">자동 (카테고리 기준)</option>
+              {(Object.keys(BUDGET_NATURE_LABELS) as BudgetNature[]).map((n) => (
+                <option key={n} value={n}>
+                  {BUDGET_NATURE_LABELS[n]}
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
       </details>

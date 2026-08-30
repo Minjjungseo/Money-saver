@@ -9,3 +9,4 @@ export * from "./insights";
 export * from "./readiness";
 export * from "./budget";
 export * from "./fixedCosts";
+export * from "./livingBudget";
