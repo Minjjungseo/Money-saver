@@ -9,10 +9,29 @@ export interface FixedCostSummary {
   /** All INCLUDED items converted into baseCurrency and summed. */
   includedTotalBaseMinor: number;
   baseCurrency: CurrencyCode;
-  /** Target from the active MONTHLY budget, converted into baseCurrency; null if none is configured. */
+  /** The active "생활비" budget's monthly-equivalent target, converted into baseCurrency; null if none is configured. */
   monthlyBudgetMinor: number | null;
   /** monthlyBudgetMinor - includedTotalBaseMinor; null when there's no monthly budget to compare against. */
   variableRemainingMinor: number | null;
+}
+
+/** Weeks per month, averaged (52 weeks / 12 months) — the standard weekly<->monthly budget conversion. */
+const WEEKS_PER_MONTH = 52 / 12;
+
+/** The stable name the living-budget editor always saves under, so it can be found regardless of its WEEKLY/MONTHLY basis. */
+export const LIVING_BUDGET_NAME = "생활비";
+
+/** Finds the active "생활비" budget and expresses its target as a monthly-equivalent amount in baseCurrency. */
+export function resolveMonthlyLivingBudgetMinor(
+  budgets: Budget[],
+  baseCurrency: CurrencyCode,
+  rates: ExchangeRate[]
+): number | null {
+  const livingBudget = budgets.find((b) => b.active && b.name === LIVING_BUDGET_NAME);
+  if (!livingBudget) return null;
+  const monthlyMinor =
+    livingBudget.period === "WEEKLY" ? Math.round(livingBudget.amountMinor * WEEKS_PER_MONTH) : livingBudget.amountMinor;
+  return convertToBase(monthlyMinor, livingBudget.currency, baseCurrency, rates);
 }
 
 /**
@@ -20,6 +39,9 @@ export interface FixedCostSummary {
  * the household's regular living budget is already committed ("생활비 포함"
  * items) versus how much is left for variable day-to-day spending, with rent
  * and other "생활비 별도" items tracked apart since they're funded separately.
+ * Uses each item's `monthlyEquivalentMinor` when set (its real cycle isn't
+ * monthly), falling back to `amountMinor`; items with neither confirmed
+ * contribute 0 rather than being guessed.
  */
 export function calculateFixedCostSummary(
   recurringExpenses: RecurringExpense[],
@@ -34,14 +56,11 @@ export function calculateFixedCostSummary(
   const separateByCurrency = sumByCurrency(separate);
 
   const includedTotalBaseMinor = included.reduce(
-    (sum, r) => sum + convertToBase(r.amountMinor, r.currency, baseCurrency, rates),
+    (sum, r) => sum + convertToBase(monthlyBudgetFigure(r), r.currency, baseCurrency, rates),
     0
   );
 
-  const activeMonthlyBudget = budgets.find((b) => b.active && b.period === "MONTHLY");
-  const monthlyBudgetMinor = activeMonthlyBudget
-    ? convertToBase(activeMonthlyBudget.amountMinor, activeMonthlyBudget.currency, baseCurrency, rates)
-    : null;
+  const monthlyBudgetMinor = resolveMonthlyLivingBudgetMinor(budgets, baseCurrency, rates);
 
   return {
     includedByCurrency,
@@ -53,10 +72,15 @@ export function calculateFixedCostSummary(
   };
 }
 
+/** The best available monthly-budget figure for an item: its explicit monthly-equivalent, else its real amount, else 0 (never guessed). */
+function monthlyBudgetFigure(r: RecurringExpense): number {
+  return r.monthlyEquivalentMinor ?? r.amountMinor ?? 0;
+}
+
 function sumByCurrency(items: RecurringExpense[]): Partial<Record<CurrencyCode, number>> {
   const totals: Partial<Record<CurrencyCode, number>> = {};
   for (const item of items) {
-    totals[item.currency] = (totals[item.currency] ?? 0) + item.amountMinor;
+    totals[item.currency] = (totals[item.currency] ?? 0) + monthlyBudgetFigure(item);
   }
   return totals;
 }

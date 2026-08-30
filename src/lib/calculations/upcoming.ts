@@ -19,9 +19,9 @@ export function calculateUpcomingEssentialExpenses(
   rates: ExchangeRate[]
 ): number {
   let total = 0;
-  for (const r of recurringExpenses.filter((r) => r.essential)) {
+  for (const r of recurringExpenses.filter((r) => r.essential && r.amountMinor !== null)) {
     const occurrences = expandRecurringOccurrences(r, horizonStart, horizonEnd);
-    total += occurrences.length * convertToBase(r.amountMinor, r.currency, baseCurrency, rates);
+    total += occurrences.length * convertToBase(r.amountMinor!, r.currency, baseCurrency, rates);
   }
   for (const p of plannedExpenses.filter((p) => p.essential && p.status === "PLANNED")) {
     const date = parseISO(p.date);
@@ -64,12 +64,12 @@ export function calculateUpcomingItems(
   limit = 8
 ): UpcomingItem[] {
   const items: UpcomingItem[] = [];
-  for (const r of recurringExpenses) {
+  for (const r of recurringExpenses.filter((r) => r.amountMinor !== null)) {
     for (const date of expandRecurringOccurrences(r, horizonStart, horizonEnd)) {
       items.push({
         date: date.toISOString().slice(0, 10),
         name: r.name,
-        amountMinor: r.amountMinor,
+        amountMinor: r.amountMinor!,
         currency: r.currency,
         essential: r.essential,
         kind: "RECURRING",

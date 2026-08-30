@@ -63,4 +63,17 @@ describe("matchCategoryByName", () => {
     expect(matchCategoryByName(null, categories)).toBeNull();
     expect(matchCategoryByName("", categories)).toBeNull();
   });
+
+  it("matches legacy old-English top-level category names from older exports, case-insensitively", () => {
+    expect(matchCategoryByName("Subscriptions", categories)).toBe(categoryIdFor("subscriptions"));
+    expect(matchCategoryByName("subscriptions", categories)).toBe(categoryIdFor("subscriptions"));
+    expect(matchCategoryByName("Housing", categories)).toBe(categoryIdFor("housing"));
+    expect(matchCategoryByName("Groceries", categories)).toBe(categoryIdFor("groceries"));
+    expect(matchCategoryByName("Dining", categories)).toBe(categoryIdFor("dining"));
+    expect(matchCategoryByName("Kids", categories)).toBe(categoryIdFor("kids"));
+    expect(matchCategoryByName("Car", categories)).toBe(categoryIdFor("car"));
+    expect(matchCategoryByName("Shopping", categories)).toBe(categoryIdFor("shopping"));
+    expect(matchCategoryByName("Health", categories)).toBe(categoryIdFor("health"));
+    expect(matchCategoryByName("Other", categories)).toBe(categoryIdFor("other"));
+  });
 });

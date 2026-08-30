@@ -32,12 +32,17 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
   const { data, addRecurringExpense, updateRecurringExpense, deleteRecurringExpense } = useData();
 
   const [name, setName] = useState(editing?.name ?? "");
-  const [amount, setAmount] = useState(editing ? String(toMajorUnits(editing.amountMinor, editing.currency)) : "");
+  const [amount, setAmount] = useState(
+    editing?.amountMinor != null ? String(toMajorUnits(editing.amountMinor, editing.currency)) : ""
+  );
   const [currency, setCurrency] = useState<CurrencyCode>(editing?.currency ?? data.settings.baseCurrency);
   const [frequency, setFrequency] = useState<RecurringFrequency>(editing?.frequency ?? "MONTHLY");
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>(editing?.customInterval?.unit ?? "MONTH");
   const [intervalCount, setIntervalCount] = useState(editing?.customInterval?.count ?? 2);
-  const [nextDueDate, setNextDueDate] = useState(editing?.nextDueDate ?? format(new Date(), "yyyy-MM-dd"));
+  const [nextDueDate, setNextDueDate] = useState(editing?.nextDueDate ?? (editing ? "" : format(new Date(), "yyyy-MM-dd")));
+  const [monthlyEquivalent, setMonthlyEquivalent] = useState(
+    editing?.monthlyEquivalentMinor != null ? String(toMajorUnits(editing.monthlyEquivalentMinor, editing.currency)) : ""
+  );
   const [essential, setEssential] = useState(editing?.essential ?? true);
   const [accountId, setAccountId] = useState(editing?.accountId ?? data.accounts[0]?.id ?? "");
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? "");
@@ -47,23 +52,27 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
     editing?.livingBudgetImpact ?? ""
   );
 
-  const canSave = name.trim() !== "" && amount.trim() !== "" && !isNaN(Number(amount)) && nextDueDate !== "";
+  const canSave = name.trim() !== "" && (amount.trim() === "" || !isNaN(Number(amount)));
 
   function handleSave() {
     if (!canSave) return;
+    const amountMinor = amount.trim() === "" ? null : toMinorUnits(Number(amount), currency);
+    const nextDue = nextDueDate.trim() === "" ? null : nextDueDate;
     const payload = {
       name: name.trim(),
-      amountMinor: toMinorUnits(Number(amount), currency),
+      amountMinor,
       currency,
       frequency,
       customInterval: frequency === "CUSTOM" ? { unit: intervalUnit, count: intervalCount } : null,
-      nextDueDate,
+      monthlyEquivalentMinor: monthlyEquivalent.trim() === "" ? null : toMinorUnits(Number(monthlyEquivalent), currency),
+      nextDueDate: nextDue,
+      status: (amountMinor === null || nextDue === null ? "NEEDS_CONFIRMATION" : "ACTIVE") as RecurringExpense["status"],
       essential,
       accountId: accountId || null,
       paymentNote: paymentNote.trim() || null,
       actualCycleNote: actualCycleNote.trim() || null,
       livingBudgetImpact: livingBudgetImpact || null,
-      startDate: editing?.startDate ?? nextDueDate,
+      startDate: editing?.startDate ?? nextDue ?? format(new Date(), "yyyy-MM-dd"),
       endDate: editing?.endDate ?? null,
       categoryId: categoryId || null,
     };
@@ -85,8 +94,8 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div>
-          <Label>금액 *</Label>
-          <Input inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Label>금액 (실제 결제 기준)</Label>
+          <Input inputMode="decimal" placeholder="아직 모르면 비워두세요" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <Select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)} className="w-24">
           <option value="AUD">AUD</option>
@@ -120,15 +129,26 @@ function RecurringExpenseForm({ editing, onDone }: { editing: RecurringExpense |
             </Select>
           </div>
         )}
-        {frequency === "CUSTOM" && (
-          <p className="mt-1 text-[12px] text-ink-faint">
-            학기·텀처럼 날짜가 불규칙한 항목은 정기 지출 대신 예정 지출로 개별 등록하는 게 더 정확해요.
-          </p>
+        {frequency === "TERM_BASED" && (
+          <p className="mt-1 text-[12px] text-ink-faint">학기·텀 단위로 결제돼서 다음 결제일을 예측하기 어려운 항목이에요.</p>
         )}
       </div>
       <div>
         <Label>다음 결제일</Label>
         <Input type="date" value={nextDueDate} onChange={(e) => setNextDueDate(e.target.value)} />
+        <p className="mt-1 text-[12px] text-ink-faint">아직 확정되지 않았으면 비워두세요. 임의로 날짜를 넣지 않아요.</p>
+      </div>
+      <div>
+        <Label>월 환산 예산 참고값 (선택)</Label>
+        <Input
+          inputMode="decimal"
+          placeholder="예: 실제 주기가 월 단위가 아닐 때 월평균 금액"
+          value={monthlyEquivalent}
+          onChange={(e) => setMonthlyEquivalent(e.target.value)}
+        />
+        <p className="mt-1 text-[12px] text-ink-faint">
+          위 금액이 매달 결제되는 게 아니면, 예산 계산에 쓸 월평균 참고값을 여기에 적어주세요.
+        </p>
       </div>
       <div>
         <Label>카테고리</Label>

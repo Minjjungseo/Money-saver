@@ -35,7 +35,12 @@ export default function PlanPage() {
   const [plannedForm, setPlannedForm] = useState<{ open: boolean; editing: PlannedExpense | null }>({ open: false, editing: null });
   const [incomeForm, setIncomeForm] = useState<{ open: boolean; editing: PlannedIncome | null }>({ open: false, editing: null });
 
-  const recurring = [...data.recurringExpenses].sort((a, b) => (a.nextDueDate < b.nextDueDate ? -1 : 1));
+  const recurring = [...data.recurringExpenses].sort((a, b) => {
+    if (!a.nextDueDate && !b.nextDueDate) return 0;
+    if (!a.nextDueDate) return 1; // undated items sort last
+    if (!b.nextDueDate) return -1;
+    return a.nextDueDate < b.nextDueDate ? -1 : 1;
+  });
   const planned = [...data.plannedExpenses].sort((a, b) => (a.date < b.date ? -1 : 1));
   const incomes = [...data.plannedIncomes].sort((a, b) => (a.expectedDate < b.expectedDate ? -1 : 1));
   const fixedCostSummary = calculateFixedCostSummary(
@@ -86,6 +91,7 @@ export default function PlanPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="text-[14px] font-medium text-ink">{r.name}</p>
                         {r.essential && <Badge tone="accent">필수</Badge>}
+                        {r.status === "NEEDS_CONFIRMATION" && <Badge tone="warn">확인 필요</Badge>}
                         {r.livingBudgetImpact && (
                           <Badge tone={r.livingBudgetImpact === "SEPARATE" ? "warn" : "neutral"}>
                             {LIVING_BUDGET_IMPACT_LABELS[r.livingBudgetImpact]}
@@ -93,13 +99,14 @@ export default function PlanPage() {
                         )}
                       </div>
                       <p className="text-[12px] text-ink-muted">
-                        {describeFrequency(r)} · 다음 결제일 {format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}
+                        {describeFrequency(r)} ·{" "}
+                        {r.nextDueDate ? `다음 결제일 ${format(parseISO(r.nextDueDate), "M월 d일", { locale: ko })}` : "다음 결제일 설정 필요"}
                       </p>
                       {paymentLabel && <p className="text-[12px] text-ink-muted">{paymentLabel}</p>}
                       {r.actualCycleNote && <p className="text-[12px] text-ink-faint">{r.actualCycleNote}</p>}
                     </div>
                     <span className="shrink-0 text-[14px] font-medium tabular-nums text-ink">
-                      {formatMoney(r.amountMinor, r.currency)}
+                      {r.amountMinor !== null ? formatMoney(r.amountMinor, r.currency) : "금액 확인 필요"}
                     </span>
                   </button>
                 );

@@ -50,6 +50,7 @@ export const FREQUENCY_LABELS: Record<RecurringFrequency, string> = {
   SIX_MONTHLY: "6개월마다",
   YEARLY: "매년",
   CUSTOM: "직접 설정",
+  TERM_BASED: "학기 단위",
 };
 
 export const INTERVAL_UNIT_LABELS = {

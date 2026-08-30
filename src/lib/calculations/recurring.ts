@@ -19,6 +19,9 @@ function advance(date: Date, recurring: RecurringExpense): Date {
       const interval = recurring.customInterval ?? { unit: "MONTH", count: 1 };
       return interval.unit === "WEEK" ? addWeeks(date, interval.count) : addMonths(date, interval.count);
     }
+    case "TERM_BASED":
+      // No fixed advance rule — the caller stops after the single confirmed date.
+      return date;
   }
 }
 
@@ -28,12 +31,18 @@ const MAX_ITERATIONS = 2000;
  * Expands a recurring expense into concrete occurrence dates that fall within
  * [rangeStart, rangeEnd]. Walks forward from nextDueDate one period at a time
  * (bounded) so a stale nextDueDate in the past still lines up correctly.
+ *
+ * Returns [] when nextDueDate is null (not yet confirmed) — never guesses a
+ * date. TERM_BASED items yield at most their single confirmed nextDueDate,
+ * since a term's real next billing date can't be projected by a fixed rule.
  */
 export function expandRecurringOccurrences(
   recurring: RecurringExpense,
   rangeStart: Date,
   rangeEnd: Date
 ): Date[] {
+  if (!recurring.nextDueDate) return [];
+
   const occurrences: Date[] = [];
   const endLimit = recurring.endDate ? parseISO(recurring.endDate) : null;
   let cursor = parseISO(recurring.nextDueDate);
@@ -45,6 +54,7 @@ export function expandRecurringOccurrences(
     if (cursor >= rangeStart) {
       occurrences.push(cursor);
     }
+    if (recurring.frequency === "TERM_BASED") break;
     cursor = advance(cursor, recurring);
   }
   return occurrences;

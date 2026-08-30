@@ -19,6 +19,7 @@ import {
   calculateNetCashFlow,
   calculateTotalBalances,
   calculateUpcomingEssentialExpenses,
+  calculateUpcomingItems,
   calculateConfirmedIncoming,
   calculateWeeklyBudgetUsage,
   calculateFixedCostSummary,
@@ -159,6 +160,7 @@ describe("available to spend", () => {
     currency: "AUD",
     frequency: "WEEKLY",
     nextDueDate: "2026-08-17",
+    status: "ACTIVE",
     essential: true,
     accountId: "acc1",
     startDate: "2026-01-01",
@@ -310,6 +312,7 @@ describe("CUSTOM_INTERVAL recurring frequency", () => {
       frequency: "CUSTOM",
       customInterval: { unit: "MONTH", count: 2 },
       nextDueDate: "2026-08-10",
+      status: "ACTIVE",
       essential: true,
       accountId: "acc1",
       startDate: "2026-08-10",
@@ -389,6 +392,7 @@ describe("Available-to-Spend readiness gating", () => {
     currency: "AUD",
     frequency: "WEEKLY",
     nextDueDate: "2026-08-17",
+    status: "ACTIVE",
     essential: true,
     accountId: "acc1",
     startDate: "2026-01-01",
@@ -566,6 +570,7 @@ describe("fixed cost summary", () => {
       currency: "AUD",
       frequency: "MONTHLY",
       nextDueDate: "2026-09-01",
+      status: "ACTIVE",
       essential: true,
       accountId: null,
       startDate: "2026-01-01",
@@ -683,5 +688,73 @@ describe("expense totals and living spend by bucket", () => {
     const items = calculateLivingSpendByBucket(transactions, categories, AUG_2026, "AUD", RATES);
     expect(items[0].prevAmountMinor).toBe(toMinorUnits(200, "AUD"));
     expect(items[0].deltaMinor).toBe(toMinorUnits(100, "AUD"));
+  });
+});
+
+describe("unconfirmed recurring expenses (null amount/nextDueDate, TERM_BASED)", () => {
+  function unconfirmedRecurring(partial: Partial<RecurringExpense>): RecurringExpense {
+    return {
+      id: "r1",
+      name: "Carlile Swimming",
+      amountMinor: null,
+      currency: "AUD",
+      frequency: "TERM_BASED",
+      monthlyEquivalentMinor: toMinorUnits(292, "AUD"),
+      nextDueDate: null,
+      status: "NEEDS_CONFIRMATION",
+      essential: true,
+      accountId: "acc1",
+      startDate: "2026-08-01",
+      endDate: null,
+      categoryId: null,
+      createdAt: "",
+      updatedAt: "",
+      ...partial,
+    };
+  }
+
+  it("never projects occurrences for a null nextDueDate — no guessed dates", () => {
+    const r = unconfirmedRecurring({});
+    expect(expandRecurringOccurrences(r, new Date(2026, 7, 1), new Date(2027, 3, 30))).toEqual([]);
+  });
+
+  it("TERM_BASED yields at most its single confirmed nextDueDate, never auto-advances", () => {
+    const r = unconfirmedRecurring({ nextDueDate: "2026-09-15", status: "ACTIVE", amountMinor: toMinorUnits(300, "AUD") });
+    const occurrences = expandRecurringOccurrences(r, new Date(2026, 7, 1), new Date(2027, 3, 30));
+    expect(occurrences).toHaveLength(1);
+    expect(occurrences[0].toISOString().slice(0, 10)).toBe("2026-09-15");
+  });
+
+  it("excludes unconfirmed (null amount or null date) items from upcoming-essential and upcoming-items forecasts", () => {
+    const confirmed: RecurringExpense = {
+      ...unconfirmedRecurring({}),
+      id: "r2",
+      amountMinor: toMinorUnits(50, "AUD"),
+      nextDueDate: "2026-08-10",
+      status: "ACTIVE",
+      frequency: "MONTHLY",
+    };
+    const recurringExpenses = [unconfirmedRecurring({}), confirmed];
+    const total = calculateUpcomingEssentialExpenses(
+      recurringExpenses,
+      [],
+      new Date(2026, 7, 1),
+      new Date(2026, 7, 31),
+      "AUD",
+      RATES
+    );
+    expect(total).toBe(toMinorUnits(50, "AUD"));
+
+    const items = calculateUpcomingItems(recurringExpenses, [], new Date(2026, 7, 1), new Date(2026, 7, 31));
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Carlile Swimming");
+  });
+
+  it("calculateFixedCostSummary falls back to monthlyEquivalentMinor when the real amount is unconfirmed", () => {
+    const items = [
+      { ...unconfirmedRecurring({}), livingBudgetImpact: "INCLUDED" as const },
+    ];
+    const summary = calculateFixedCostSummary(items, [], "AUD", RATES);
+    expect(summary.includedByCurrency.AUD).toBe(toMinorUnits(292, "AUD"));
   });
 });

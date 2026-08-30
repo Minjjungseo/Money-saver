@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 import type { CurrencyCode } from "@/types";
 import { cn } from "@/lib/cn";
@@ -9,6 +8,7 @@ export function LivingBudgetCard({
   usedMinor,
   currency,
   remainingSecondaryText,
+  onEdit,
 }: {
   monthLabel: string;
   budgetMinor: number | null;
@@ -16,6 +16,7 @@ export function LivingBudgetCard({
   currency: CurrencyCode;
   /** Small AUD-equivalent (or other secondary currency) hint shown under the remaining amount. */
   remainingSecondaryText?: string;
+  onEdit: () => void;
 }) {
   if (budgetMinor === null) {
     return (
@@ -23,11 +24,11 @@ export function LivingBudgetCard({
         <p className="text-[13px] font-medium text-ink-muted">{monthLabel} 생활비</p>
         <p className="mt-1 text-[15px] font-medium text-warn">아직 월 생활비 예산이 없어요</p>
         <p className="mt-1 text-[12px] text-ink-faint">
-          설정에서 월(매월) 생활비 예산을 등록하면 이번 달 남은 생활비를 바로 볼 수 있어요.
+          생활비 예산을 설정하면 이번 달 남은 생활비를 바로 볼 수 있어요.
         </p>
-        <Link href="/plan" className="mt-3 inline-block text-[13px] font-medium text-accent">
+        <button onClick={onEdit} className="mt-3 inline-block text-[13px] font-medium text-accent">
           생활비 예산 설정하기 →
-        </Link>
+        </button>
       </div>
     );
   }
@@ -38,7 +39,12 @@ export function LivingBudgetCard({
 
   return (
     <div className="mx-5 rounded-2xl border border-border bg-surface px-5 py-5">
-      <p className="text-[13px] font-medium text-ink-muted">{monthLabel} 생활비</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] font-medium text-ink-muted">{monthLabel} 생활비</p>
+        <button onClick={onEdit} className="text-[12px] font-medium text-accent">
+          예산 수정
+        </button>
+      </div>
 
       <div className="mt-3 flex items-baseline justify-between">
         <span className="text-[13px] text-ink-muted">남은 생활비</span>

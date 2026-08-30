@@ -119,7 +119,9 @@ export type RecurringFrequency =
   | "QUARTERLY"
   | "SIX_MONTHLY"
   | "YEARLY"
-  | "CUSTOM";
+  | "CUSTOM"
+  /** Billed per school term / irregular schedule — no fixed advance rule, so occurrences aren't auto-projected. */
+  | "TERM_BASED";
 
 export type IntervalUnit = "WEEK" | "MONTH";
 
@@ -137,16 +139,38 @@ export interface CustomInterval {
  */
 export type LivingBudgetImpact = "INCLUDED" | "SEPARATE";
 
+/**
+ * ACTIVE: amount and nextDueDate are both confirmed real values, safe to use
+ * for near-term forecasting ("앞으로 나갈 필수 지출"). NEEDS_CONFIRMATION: at
+ * least one of them is unknown — never guessed or defaulted to today/zero,
+ * so the item is excluded from that forecast until a person fills it in.
+ */
+export type RecurringExpenseStatus = "ACTIVE" | "NEEDS_CONFIRMATION";
+
 export interface RecurringExpense {
   id: string;
   name: string;
-  /** Monthly-equivalent amount. For an item whose real billing cycle isn't monthly, this is the monthly average — see `actualCycleNote` for the real cycle/amount. */
-  amountMinor: number;
+  /**
+   * The real amount actually charged per `frequency` cycle (e.g. A$650 for a
+   * WEEKLY rent payment) — null when the real amount isn't confirmed yet
+   * (see `status`). This is never a monthly average; use `monthlyEquivalentMinor`
+   * for that.
+   */
+  amountMinor: number | null;
   currency: CurrencyCode;
   frequency: RecurringFrequency;
   /** Required when frequency === "CUSTOM"; ignored otherwise. e.g. every 2 months = { unit: "MONTH", count: 2 }. */
   customInterval?: CustomInterval | null;
-  nextDueDate: string; // ISO date
+  /**
+   * A separate, explicit monthly-budget reference figure for items whose real
+   * cycle isn't monthly (e.g. A$2,817/월 for a WEEKLY A$650 rent payment).
+   * Forecast/budget use only — never treated as the real per-cycle amount.
+   */
+  monthlyEquivalentMinor?: number | null;
+  /** ISO date, or null when not yet confirmed — never a guessed/default date. See `status`. */
+  nextDueDate: string | null;
+  /** Derived from whether amount + nextDueDate are both confirmed; see RecurringExpenseStatus. */
+  status: RecurringExpenseStatus;
   essential: boolean;
   accountId: string | null;
   /**
@@ -157,9 +181,9 @@ export interface RecurringExpense {
    */
   paymentNote?: string | null;
   /**
-   * Free-text note on the real (non-monthly) billing cycle and amount when
-   * `amountMinor` is a monthly average, e.g. "실제 2주마다 A$29.90". Null when
-   * `amountMinor` already reflects the true billing cycle.
+   * Free-text note on the real (non-monthly) billing cycle, and any other
+   * budget/forecast context (e.g. a total-through-date reference figure).
+   * Null when `amountMinor` already fully describes the real billing cycle.
    */
   actualCycleNote?: string | null;
   /** How this item counts toward the monthly living budget; see LivingBudgetImpact. */
@@ -205,6 +229,11 @@ export interface PlannedIncome {
 export type BudgetPeriod = "WEEKLY" | "MONTHLY";
 
 /** A simple spending target for a period, optionally scoped to one category. */
+export interface BudgetSubItem {
+  name: string;
+  amountMinor: number;
+}
+
 export interface Budget {
   id: string;
   name: string;
@@ -213,6 +242,13 @@ export interface Budget {
   period: BudgetPeriod;
   categoryId: string | null;
   active: boolean;
+  /**
+   * Optional named breakdown of `amountMinor` for the person's own planning
+   * reference (e.g. 장보기/외식·카페/쇼핑·아이/교통·기타 under one 생활비
+   * budget). Display/editing only — spend matching always uses the whole
+   * budget (categoryId, if set), never these sub-items individually.
+   */
+  subItems?: BudgetSubItem[] | null;
   isDemo?: boolean;
   createdAt: string;
   updatedAt: string;

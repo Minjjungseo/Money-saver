@@ -10,6 +10,7 @@ import { hasDemoData } from "@/lib/demoData";
 import { useHomeMetrics } from "@/hooks/useHomeMetrics";
 import { MonthSelector } from "@/components/home/MonthSelector";
 import { LivingBudgetCard } from "@/components/home/LivingBudgetCard";
+import { LivingBudgetFormSheet } from "@/components/home/LivingBudgetFormSheet";
 import { FixedVsVariableCard } from "@/components/home/FixedVsVariableCard";
 import { TopLivingSpendCard } from "@/components/home/TopLivingSpendCard";
 import { AccountBalanceCard } from "@/components/home/AccountBalanceCard";
@@ -30,6 +31,7 @@ import type { ExchangeRate } from "@/types";
 export default function HomePage() {
   const { data, loading } = useData();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [budgetEditorOpen, setBudgetEditorOpen] = useState(false);
   const now = new Date();
   const metrics = useHomeMetrics(selectedMonth, now);
   const { openManual } = useAddFlow();
@@ -85,6 +87,7 @@ export default function HomePage() {
           usedMinor={metrics.livingUsedMinor}
           currency={metrics.baseCurrency}
           remainingSecondaryText={remainingSecondaryText}
+          onEdit={() => setBudgetEditorOpen(true)}
         />
 
         {/* 2. 고정지출 vs 변동생활비 */}
@@ -142,6 +145,8 @@ export default function HomePage() {
           monthRemainingSpending={metrics.monthRemainingSpending}
         />
       </div>
+
+      <LivingBudgetFormSheet open={budgetEditorOpen} onClose={() => setBudgetEditorOpen(false)} />
     </div>
   );
 }
