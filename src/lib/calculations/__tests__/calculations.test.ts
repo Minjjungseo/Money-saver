@@ -22,7 +22,7 @@ import {
   calculateConfirmedIncoming,
   calculateWeeklyBudgetUsage,
   calculateFixedCostSummary,
-  calculateBudgetNatureTotals,
+  calculateExpenseTotals,
   calculateLivingSpendByBucket,
   expandRecurringOccurrences,
   getHorizonRange,
@@ -625,7 +625,7 @@ describe("fixed cost summary", () => {
   });
 });
 
-describe("budget nature totals and living spend by bucket", () => {
+describe("expense totals and living spend by bucket", () => {
   const categories = buildDefaultCategories();
   const AUG_2026 = new Date(2026, 7, 1);
 
@@ -639,34 +639,35 @@ describe("budget nature totals and living spend by bucket", () => {
     });
   }
 
-  it("groups net spend by BudgetNature, using explicit tags over inferred category defaults", () => {
+  it("splits net spend into household-fixed/household-variable/business/separate, using explicit tags over inferred defaults", () => {
     const transactions = [
       livingTx({ id: "t1", categoryId: categoryIdFor("groceries"), amountMinor: toMinorUnits(50, "AUD") }),
       livingTx({ id: "t2", categoryId: categoryIdFor("subscriptions"), amountMinor: toMinorUnits(20, "AUD") }),
       livingTx({ id: "t3", categoryId: categoryIdFor("business"), amountMinor: toMinorUnits(30, "AUD") }),
       livingTx({ id: "t4", categoryId: categoryIdFor("housing_rent"), amountMinor: toMinorUnits(650, "AUD") }),
-      livingTx({ id: "t5", categoryId: categoryIdFor("groceries"), amountMinor: toMinorUnits(10, "AUD"), budgetNature: "SEPARATE" }),
+      livingTx({ id: "t5", categoryId: categoryIdFor("groceries"), amountMinor: toMinorUnits(10, "AUD"), scope: "SEPARATE" }),
+      // A subscription-category merchant confirmed as business stays FIXED behavior but moves out of household entirely.
+      livingTx({ id: "t6", merchant: "FIGMA", categoryId: categoryIdFor("subscriptions"), amountMinor: toMinorUnits(15, "AUD") }),
     ];
 
-    const totals = calculateBudgetNatureTotals(transactions, categories, AUG_2026, "AUD", RATES);
-    expect(totals.LIVING).toBe(toMinorUnits(50, "AUD"));
-    expect(totals.FIXED).toBe(toMinorUnits(20, "AUD"));
-    expect(totals.BUSINESS).toBe(toMinorUnits(30, "AUD"));
-    expect(totals.SEPARATE).toBe(toMinorUnits(650 + 10, "AUD"));
-    expect(totals.TRANSFER).toBe(0);
+    const totals = calculateExpenseTotals(transactions, categories, AUG_2026, "AUD", RATES);
+    expect(totals.householdVariableMinor).toBe(toMinorUnits(50, "AUD"));
+    expect(totals.householdFixedMinor).toBe(toMinorUnits(20, "AUD"));
+    expect(totals.businessMinor).toBe(toMinorUnits(30 + 15, "AUD"));
+    expect(totals.separateMinor).toBe(toMinorUnits(650 + 10, "AUD"));
   });
 
   it("excludes transactions outside the given month", () => {
     const transactions = [livingTx({ date: "2026-07-15", categoryId: categoryIdFor("groceries"), amountMinor: toMinorUnits(50, "AUD") })];
-    const totals = calculateBudgetNatureTotals(transactions, categories, AUG_2026, "AUD", RATES);
-    expect(totals.LIVING).toBe(0);
+    const totals = calculateExpenseTotals(transactions, categories, AUG_2026, "AUD", RATES);
+    expect(totals.householdVariableMinor).toBe(0);
   });
 
-  it("ranks LIVING spend by the 7 simplified home buckets, excluding FIXED/BUSINESS/SEPARATE", () => {
+  it("ranks household/variable spend by the 7 simplified home buckets, excluding fixed/business/separate", () => {
     const transactions = [
       livingTx({ id: "t1", categoryId: categoryIdFor("groceries"), amountMinor: toMinorUnits(300, "AUD") }),
       livingTx({ id: "t2", categoryId: categoryIdFor("dining"), amountMinor: toMinorUnits(100, "AUD") }),
-      livingTx({ id: "t3", categoryId: categoryIdFor("subscriptions"), amountMinor: toMinorUnits(999, "AUD") }), // FIXED, excluded
+      livingTx({ id: "t3", categoryId: categoryIdFor("subscriptions"), amountMinor: toMinorUnits(999, "AUD") }), // household/FIXED, excluded
     ];
     const items = calculateLivingSpendByBucket(transactions, categories, AUG_2026, "AUD", RATES);
     expect(items.map((i) => i.bucket)).toEqual(["GROCERIES", "DINING"]);

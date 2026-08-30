@@ -6,7 +6,8 @@
  */
 import type {
   AccountType,
-  BudgetNature,
+  ExpenseBehavior,
+  ExpenseScope,
   LivingBudgetImpact,
   PlannedExpenseStatus,
   RecurringExpense,
@@ -68,12 +69,17 @@ export const LIVING_BUDGET_IMPACT_LABELS: Record<LivingBudgetImpact, string> = {
   SEPARATE: "생활비 별도",
 };
 
-export const BUDGET_NATURE_LABELS: Record<BudgetNature, string> = {
-  LIVING: "생활비",
-  FIXED: "고정비",
+export const EXPENSE_SCOPE_LABELS: Record<ExpenseScope, string> = {
+  HOUSEHOLD: "생활비",
   BUSINESS: "사업비",
   SEPARATE: "별도자금",
   TRANSFER: "자산이동",
+};
+
+export const EXPENSE_BEHAVIOR_LABELS: Record<ExpenseBehavior, string> = {
+  FIXED: "고정",
+  VARIABLE: "변동",
+  ONE_TIME: "일회성",
 };
 
 export const PLANNED_EXPENSE_STATUS_LABELS: Record<PlannedExpenseStatus, string> = {

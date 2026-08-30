@@ -67,14 +67,16 @@ export interface Category {
 export type TransactionSource = "MANUAL" | "IMAGE_IMPORT" | "CSV_IMPORT" | "JSON_IMPORT";
 
 /**
- * What a transaction's spend counts toward, independent of its category:
- * day-to-day living spend, a household fixed cost, a business expense, a
- * large separately-funded item (rent, tuition), or money just moving between
- * the user's own accounts. Drives the household's monthly living-budget math,
- * which category alone can't (e.g. "식료품" is always LIVING, but "육아" could
- * be a LIVING purchase or a FIXED recurring activity fee).
+ * Who/what a transaction's spend belongs to — independent of its category
+ * AND independent of how often it recurs (see ExpenseBehavior below). A
+ * subscription can be a BUSINESS expense that's also FIXED (Figma) or a
+ * HOUSEHOLD expense that's also FIXED (Netflix) — these are two separate
+ * questions, so they're two separate fields, not one combined value.
  */
-export type BudgetNature = "LIVING" | "FIXED" | "BUSINESS" | "SEPARATE" | "TRANSFER";
+export type ExpenseScope = "HOUSEHOLD" | "BUSINESS" | "SEPARATE" | "TRANSFER";
+
+/** How regularly a transaction's spend repeats. Orthogonal to ExpenseScope — see above. */
+export type ExpenseBehavior = "FIXED" | "VARIABLE" | "ONE_TIME";
 
 export interface Transaction {
   id: string;
@@ -95,8 +97,16 @@ export interface Transaction {
   originalFileRef: string | null;
   /** For TRANSFER: the counterpart account, if known. */
   transferAccountId?: string | null;
-  /** Explicit override; when null/undefined it's inferred from categoryId — see resolveBudgetNature(). */
-  budgetNature?: BudgetNature | null;
+  /** Explicit override; when null/undefined it's inferred — see resolveExpenseScope(). */
+  scope?: ExpenseScope | null;
+  /** Explicit override; when null/undefined it's inferred — see resolveExpenseBehavior(). */
+  expenseBehavior?: ExpenseBehavior | null;
+  /** Raw source-system category label, preserved verbatim for audit (e.g. Notion's "분류": "📱 구독·사업"). Never used for calculation — only scope/expenseBehavior are. */
+  sourceClassification?: string | null;
+  /** Raw source-system "성격"-style label, preserved verbatim for audit (e.g. "생활비"). Note this is NOT a business/personal split in the source system — see ExpenseScope for that. */
+  sourceNature?: string | null;
+  /** Raw source-system recurrence label, preserved verbatim for audit (e.g. "고정"/"변동"/"일회성"). */
+  sourceFixedVariable?: string | null;
   isDemo?: boolean;
   createdAt: string;
   updatedAt: string;

@@ -90,8 +90,8 @@ export default function HomePage() {
         {/* 2. 고정지출 vs 변동생활비 */}
         {metrics.monthlyLivingBudgetMinor !== null && (
           <FixedVsVariableCard
-            fixed={{ label: "고정지출", budgetMinor: metrics.fixedBudgetMinor, usedMinor: metrics.natureTotals.FIXED }}
-            variable={{ label: "변동생활비", budgetMinor: metrics.variableBudgetMinor, usedMinor: metrics.natureTotals.LIVING }}
+            fixed={{ label: "고정지출", budgetMinor: metrics.fixedBudgetMinor, usedMinor: metrics.expenseTotals.householdFixedMinor }}
+            variable={{ label: "변동생활비", budgetMinor: metrics.variableBudgetMinor, usedMinor: metrics.expenseTotals.householdVariableMinor }}
             currency={metrics.baseCurrency}
           />
         )}

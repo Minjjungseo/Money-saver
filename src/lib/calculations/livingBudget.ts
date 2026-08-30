@@ -1,7 +1,7 @@
 import { isWithinInterval, subMonths } from "date-fns";
-import type { BudgetNature, Category, CurrencyCode, ExchangeRate, Transaction } from "@/types";
+import type { Category, CurrencyCode, ExchangeRate, Transaction } from "@/types";
 import { convertToBase } from "@/lib/exchange";
-import { resolveBudgetNature, homeSpendBucketFor, HOME_SPEND_BUCKET_LABELS, type HomeSpendBucket } from "@/lib/budgetNature";
+import { resolveExpenseScope, resolveExpenseBehavior, homeSpendBucketFor, HOME_SPEND_BUCKET_LABELS, type HomeSpendBucket } from "@/lib/expenseClassification";
 import { getMonthRange } from "./period";
 
 function parseTxDate(dateStr: string): Date {
@@ -16,22 +16,43 @@ function netSpendInBase(t: Transaction, baseCurrency: CurrencyCode, rates: Excha
   return 0;
 }
 
-const EMPTY_TOTALS: Record<BudgetNature, number> = { LIVING: 0, FIXED: 0, BUSINESS: 0, SEPARATE: 0, TRANSFER: 0 };
+export interface ExpenseTotals {
+  /** HOUSEHOLD scope, FIXED behavior — the household's recurring fixed costs (rent excluded; rent is SEPARATE). */
+  householdFixedMinor: number;
+  /** HOUSEHOLD scope, VARIABLE or ONE_TIME behavior — day-to-day living spend. */
+  householdVariableMinor: number;
+  /** BUSINESS scope, any behavior. */
+  businessMinor: number;
+  /** SEPARATE scope, any behavior (rent, tuition, large one-off funded items). */
+  separateMinor: number;
+}
 
-/** Net monthly spend grouped by BudgetNature (explicit tag, else inferred from category). */
-export function calculateBudgetNatureTotals(
+const EMPTY_TOTALS: ExpenseTotals = { householdFixedMinor: 0, householdVariableMinor: 0, businessMinor: 0, separateMinor: 0 };
+
+/** Net monthly spend grouped by ExpenseScope × ExpenseBehavior (explicit tags, else inferred from category/merchant). */
+export function calculateExpenseTotals(
   transactions: Transaction[],
   categories: Category[],
   monthDate: Date,
   baseCurrency: CurrencyCode,
   rates: ExchangeRate[]
-): Record<BudgetNature, number> {
+): ExpenseTotals {
   const { start, end } = getMonthRange(monthDate);
   const totals = { ...EMPTY_TOTALS };
   for (const t of transactions) {
     if (!isWithinInterval(parseTxDate(t.date), { start, end })) continue;
-    const nature = resolveBudgetNature(t, categories);
-    totals[nature] += netSpendInBase(t, baseCurrency, rates);
+    const scope = resolveExpenseScope(t, categories);
+    const amount = netSpendInBase(t, baseCurrency, rates);
+    if (scope === "BUSINESS") {
+      totals.businessMinor += amount;
+    } else if (scope === "SEPARATE") {
+      totals.separateMinor += amount;
+    } else if (scope === "HOUSEHOLD") {
+      const behavior = resolveExpenseBehavior(t, categories);
+      if (behavior === "FIXED") totals.householdFixedMinor += amount;
+      else totals.householdVariableMinor += amount;
+    }
+    // TRANSFER scope is excluded from every bucket — it's not spend.
   }
   return totals;
 }
@@ -46,11 +67,11 @@ export interface LivingSpendBucketItem {
 }
 
 /**
- * LIVING-nature spend for the month, grouped into the 7 simplified Home-screen
- * buckets and ranked descending, with each bucket's prior-month amount for a
- * small "지난달보다 +/-" comparison. FIXED/BUSINESS/SEPARATE/TRANSFER spend is
- * intentionally excluded — this answers "어디에 생활비를 많이 썼는가", not
- * total spend.
+ * HOUSEHOLD/VARIABLE spend for the month, grouped into the 7 simplified
+ * Home-screen buckets and ranked descending, with each bucket's prior-month
+ * amount for a small "지난달보다 +/-" comparison. FIXED/BUSINESS/SEPARATE/TRANSFER
+ * spend is intentionally excluded — this answers "어디에 생활비를 많이 썼는가",
+ * not total spend.
  */
 export function calculateLivingSpendByBucket(
   transactions: Transaction[],
@@ -64,7 +85,8 @@ export function calculateLivingSpendByBucket(
     const totals: Partial<Record<HomeSpendBucket, number>> = {};
     for (const t of transactions) {
       if (!isWithinInterval(parseTxDate(t.date), { start, end })) continue;
-      if (resolveBudgetNature(t, categories) !== "LIVING") continue;
+      if (resolveExpenseScope(t, categories) !== "HOUSEHOLD") continue;
+      if (resolveExpenseBehavior(t, categories) !== "VARIABLE") continue;
       const bucket = homeSpendBucketFor(t.categoryId, categories);
       totals[bucket] = (totals[bucket] ?? 0) + netSpendInBase(t, baseCurrency, rates);
     }

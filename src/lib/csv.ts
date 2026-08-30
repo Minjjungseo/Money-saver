@@ -76,6 +76,10 @@ export interface TransactionCsvRow {
   subcategory: string;
   accountName: string;
   memo: string;
+  /** Raw source-system fields, preserved verbatim for audit when the CSV carries them (e.g. Notion's 분류/성격/고정변동). Never used for calculation. */
+  sourceClassification: string;
+  sourceNature: string;
+  sourceFixedVariable: string;
 }
 
 export function transactionsToCsv(transactions: Transaction[], categories: Category[], accounts: Account[]): string {
@@ -144,6 +148,9 @@ export function parseTransactionsCsv(text: string): { rows: TransactionCsvRow[];
       subcategory: get("subcategory"),
       accountName: get("account"),
       memo: get("memo"),
+      sourceClassification: get("source_classification"),
+      sourceNature: get("source_nature"),
+      sourceFixedVariable: get("source_fixed_variable"),
     });
   }
 

@@ -13,12 +13,17 @@ import { TransactionRow } from "@/components/transactions/TransactionRow";
 import { TransactionFilterSheet, type TransactionFilters } from "@/components/transactions/TransactionFilterSheet";
 import { formatMoney } from "@/lib/money";
 import { convertToBase } from "@/lib/exchange";
-import { BUDGET_NATURE_LABELS } from "@/lib/labels";
-import { resolveBudgetNature } from "@/lib/budgetNature";
+import { matchesPurposeFilter, type PurposeFilterKey } from "@/lib/expenseClassification";
 import { cn } from "@/lib/cn";
-import type { BudgetNature, Category, Transaction } from "@/types";
+import type { Category, Transaction } from "@/types";
 
-const NATURE_FILTERS: (BudgetNature | "ALL")[] = ["LIVING", "FIXED", "BUSINESS", "SEPARATE", "ALL"];
+const PURPOSE_FILTERS: { key: PurposeFilterKey; label: string }[] = [
+  { key: "LIVING", label: "생활비" },
+  { key: "FIXED", label: "고정비" },
+  { key: "BUSINESS", label: "사업비" },
+  { key: "SEPARATE", label: "별도자금" },
+  { key: "ALL", label: "전체" },
+];
 
 function currentMonthKey() {
   const now = new Date();
@@ -26,7 +31,7 @@ function currentMonthKey() {
 }
 
 function defaultFilters(): TransactionFilters {
-  return { monthKey: currentMonthKey(), accountId: "ALL", categoryId: "ALL", type: "ALL", nature: "LIVING" };
+  return { monthKey: currentMonthKey(), accountId: "ALL", categoryId: "ALL", type: "ALL", purpose: "LIVING" };
 }
 
 function monthKeyOf(tx: Transaction) {
@@ -59,18 +64,18 @@ export default function TransactionsPage() {
 
   const activeFilterCount = [filters.categoryId, filters.type].filter((v) => v !== "ALL").length;
 
-  const byNatureAccountMonth = useMemo(() => {
+  const byPurposeAccountMonth = useMemo(() => {
     return data.transactions.filter((tx) => {
       if (filters.monthKey !== "ALL" && monthKeyOf(tx) !== filters.monthKey) return false;
       if (filters.accountId !== "ALL" && tx.accountId !== filters.accountId) return false;
-      if (filters.nature !== "ALL" && resolveBudgetNature(tx, data.categories) !== filters.nature) return false;
+      if (!matchesPurposeFilter(tx, data.categories, filters.purpose)) return false;
       return true;
     });
-  }, [data.transactions, data.categories, filters.monthKey, filters.accountId, filters.nature]);
+  }, [data.transactions, data.categories, filters.monthKey, filters.accountId, filters.purpose]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return byNatureAccountMonth.filter((tx) => {
+    return byPurposeAccountMonth.filter((tx) => {
       if (filters.categoryId !== "ALL" && topLevelCategoryOf(tx.categoryId, categoryById) !== filters.categoryId) return false;
       if (filters.type !== "ALL" && tx.transactionType !== filters.type) return false;
       if (q) {
@@ -80,17 +85,17 @@ export default function TransactionsPage() {
       }
       return true;
     });
-  }, [byNatureAccountMonth, search, filters.categoryId, filters.type, categoryById]);
+  }, [byPurposeAccountMonth, search, filters.categoryId, filters.type, categoryById]);
 
   const summary = useMemo(() => {
-    const totalMinor = byNatureAccountMonth.reduce((sum, tx) => {
+    const totalMinor = byPurposeAccountMonth.reduce((sum, tx) => {
       if (tx.transactionType !== "EXPENSE" && tx.transactionType !== "CASH_WITHDRAWAL" && tx.transactionType !== "REFUND") return sum;
       const amount = convertToBase(tx.amountMinor, tx.currency, data.settings.baseCurrency, data.exchangeRates);
       return sum + (tx.transactionType === "REFUND" ? -amount : amount);
     }, 0);
 
     const byCategory = new Map<string, number>();
-    for (const tx of byNatureAccountMonth) {
+    for (const tx of byPurposeAccountMonth) {
       if (tx.transactionType !== "EXPENSE" && tx.transactionType !== "CASH_WITHDRAWAL" && tx.transactionType !== "REFUND") continue;
       const topId = topLevelCategoryOf(tx.categoryId, categoryById) ?? "cat_other";
       const amount = convertToBase(tx.amountMinor, tx.currency, data.settings.baseCurrency, data.exchangeRates);
@@ -103,10 +108,10 @@ export default function TransactionsPage() {
       .slice(0, 5);
 
     return { totalMinor, topCategories };
-  }, [byNatureAccountMonth, categoryById, data.settings.baseCurrency, data.exchangeRates]);
+  }, [byPurposeAccountMonth, categoryById, data.settings.baseCurrency, data.exchangeRates]);
 
   const monthLabel = filters.monthKey === "ALL" ? "전체 기간" : format(parseISO(`${filters.monthKey}-01`), "yyyy년 M월");
-  const natureLabel = filters.nature === "ALL" ? "전체" : BUDGET_NATURE_LABELS[filters.nature];
+  const purposeLabel = PURPOSE_FILTERS.find((p) => p.key === filters.purpose)?.label ?? "전체";
 
   const grouped = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.createdAt < b.createdAt ? 1 : -1)));
@@ -144,9 +149,9 @@ export default function TransactionsPage() {
       </div>
 
       <div className="mt-3 flex gap-1.5 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-        {NATURE_FILTERS.map((n) => (
-          <Chip key={n} active={filters.nature === n} onClick={() => setFilters((f) => ({ ...f, nature: n }))}>
-            {n === "ALL" ? "전체" : BUDGET_NATURE_LABELS[n]}
+        {PURPOSE_FILTERS.map((p) => (
+          <Chip key={p.key} active={filters.purpose === p.key} onClick={() => setFilters((f) => ({ ...f, purpose: p.key }))}>
+            {p.label}
           </Chip>
         ))}
       </div>
@@ -180,7 +185,7 @@ export default function TransactionsPage() {
           <>
             <div className="rounded-2xl border border-border bg-surface px-4 py-3.5">
               <p className="text-[12px] text-ink-muted">
-                {monthLabel} · {natureLabel}
+                {monthLabel} · {purposeLabel}
               </p>
               <p className="mt-1 text-[20px] font-semibold tabular-nums text-ink">
                 총 사용 {formatMoney(summary.totalMinor, data.settings.baseCurrency)}
