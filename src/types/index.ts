@@ -340,6 +340,47 @@ export interface Settings {
   dataMigrationSummary?: DataMigrationSummary | null;
 }
 
+/**
+ * "이번 달 돈 배치" (Monthly Money Placement): one household-wide KRW living
+ * budget per month, split into purpose-tagged buckets so a person can see
+ * not just how much they can spend, but which real account that money
+ * should sit in and how much needs exchanging — distinct from account
+ * total balance (see calculations/moneyPlan.ts for the full breakdown).
+ */
+export interface MonthlyMoneyPlan {
+  id: string;
+  month: string; // yyyy-MM
+  /** The household's total monthly living-cost budget, set in KRW. */
+  totalBudgetKrwMinor: number;
+  /**
+   * Manual override for this month's 현대카드 (Korea-card) spend, in KRW
+   * minor units. Null means "auto-calculate from this month's transactions
+   * on the matched 현대카드 account" — see calculateHyundaiCardAutoKrwMinor.
+   */
+  hyundaiCardOverrideKrwMinor: number | null;
+  /** Whether the AU-fixed-cost bucket includes rent, or tracks it separately. */
+  includeRent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Which real Account each money-plan bucket's funds should live in. Null
+ * means "not yet configured" — calculateMoneyPlan falls back to matching an
+ * account by name (신한/현대카드/CommBank/하나) when a slot here is null, but
+ * an explicit id here always wins once a person confirms/changes it.
+ */
+export interface MoneyPlanBucketConfig {
+  /** Bucket A: 한국 카드 결제용 (신한은행). */
+  koreaCardAccountId: string | null;
+  /** Bucket B: 호주 현지 고정비 (CommBank). */
+  auFixedAccountId: string | null;
+  /** Bucket C: 생활비 (하나트래블로그). */
+  livingAccountId: string | null;
+  /** Bucket D: 선택적 예비비 — optional, not part of the required-shortfall calculation. */
+  reserveAccountId: string | null;
+}
+
 export interface AppData {
   accounts: Account[];
   transactions: Transaction[];
@@ -352,6 +393,8 @@ export interface AppData {
   merchantRules: MerchantRule[];
   exchangeRates: ExchangeRate[];
   settings: Settings;
+  moneyPlans: MonthlyMoneyPlan[];
+  moneyPlanBucketConfig: MoneyPlanBucketConfig;
 }
 
 /** A candidate transaction produced by the image parser, pending user review. */

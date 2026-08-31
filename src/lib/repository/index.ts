@@ -8,4 +8,4 @@ import type { DataRepository } from "./types";
 export const repository: DataRepository = new LocalStorageDataRepository();
 
 export type { DataRepository } from "./types";
-export { DEFAULT_SETTINGS } from "./localStorageRepository";
+export { DEFAULT_SETTINGS, DEFAULT_MONEY_PLAN_BUCKET_CONFIG } from "./localStorageRepository";

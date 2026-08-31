@@ -1,4 +1,4 @@
-import type { AppData, Settings } from "@/types";
+import type { AppData, MoneyPlanBucketConfig, Settings } from "@/types";
 import { buildDefaultCategories } from "@/lib/defaultCategories";
 import type { DataRepository } from "./types";
 
@@ -16,6 +16,8 @@ const KEYS = {
   importBatches: `${STORAGE_PREFIX}importBatches`,
   merchantRules: `${STORAGE_PREFIX}merchantRules`,
   exchangeRates: `${STORAGE_PREFIX}exchangeRates`,
+  moneyPlans: `${STORAGE_PREFIX}moneyPlans`,
+  moneyPlanBucketConfig: `${STORAGE_PREFIX}moneyPlanBucketConfig`,
 } as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +30,13 @@ export const DEFAULT_SETTINGS: Settings = {
   demoDataActive: false,
   dataMigrationVersion: 0,
   dataMigrationSummary: null,
+};
+
+export const DEFAULT_MONEY_PLAN_BUCKET_CONFIG: MoneyPlanBucketConfig = {
+  koreaCardAccountId: null,
+  auFixedAccountId: null,
+  livingAccountId: null,
+  reserveAccountId: null,
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -63,6 +72,8 @@ export class LocalStorageDataRepository implements DataRepository {
       exchangeRates: readJson(KEYS.exchangeRates, [
         { pair: "AUD_KRW", rate: 900, updatedAt: new Date().toISOString() },
       ]),
+      moneyPlans: readJson(KEYS.moneyPlans, []),
+      moneyPlanBucketConfig: readJson(KEYS.moneyPlanBucketConfig, DEFAULT_MONEY_PLAN_BUCKET_CONFIG),
     };
   }
 
@@ -98,6 +109,12 @@ export class LocalStorageDataRepository implements DataRepository {
   }
   async saveExchangeRates(items: AppData["exchangeRates"]) {
     writeJson(KEYS.exchangeRates, items);
+  }
+  async saveMoneyPlans(items: AppData["moneyPlans"]) {
+    writeJson(KEYS.moneyPlans, items);
+  }
+  async saveMoneyPlanBucketConfig(config: MoneyPlanBucketConfig) {
+    writeJson(KEYS.moneyPlanBucketConfig, config);
   }
   async clearAll() {
     if (typeof window === "undefined") return;

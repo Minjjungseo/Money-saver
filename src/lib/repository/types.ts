@@ -5,6 +5,8 @@ import type {
   ExchangeRate,
   ImportBatch,
   MerchantRule,
+  MoneyPlanBucketConfig,
+  MonthlyMoneyPlan,
   PlannedExpense,
   PlannedIncome,
   RecurringExpense,
@@ -34,5 +36,7 @@ export interface DataRepository {
   saveImportBatches(items: ImportBatch[]): Promise<void>;
   saveMerchantRules(items: MerchantRule[]): Promise<void>;
   saveExchangeRates(items: ExchangeRate[]): Promise<void>;
+  saveMoneyPlans(items: MonthlyMoneyPlan[]): Promise<void>;
+  saveMoneyPlanBucketConfig(config: MoneyPlanBucketConfig): Promise<void>;
   clearAll(): Promise<void>;
 }

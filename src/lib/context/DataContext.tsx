@@ -16,13 +16,15 @@ import type {
   ExchangeRate,
   ImportBatch,
   MerchantRule,
+  MoneyPlanBucketConfig,
+  MonthlyMoneyPlan,
   PlannedExpense,
   PlannedIncome,
   RecurringExpense,
   Settings,
   Transaction,
 } from "@/types";
-import { repository, DEFAULT_SETTINGS } from "@/lib/repository";
+import { repository, DEFAULT_SETTINGS, DEFAULT_MONEY_PLAN_BUCKET_CONFIG } from "@/lib/repository";
 import { buildDemoData } from "@/lib/demoData";
 import { buildDefaultCategories } from "@/lib/defaultCategories";
 import { generateId, nowIso } from "@/lib/id";
@@ -42,6 +44,8 @@ const EMPTY_DATA: AppData = {
   merchantRules: [],
   exchangeRates: [{ pair: "AUD_KRW", rate: 900, updatedAt: nowIso() }],
   settings: DEFAULT_SETTINGS,
+  moneyPlans: [],
+  moneyPlanBucketConfig: DEFAULT_MONEY_PLAN_BUCKET_CONFIG,
 };
 
 interface DataContextValue {
@@ -86,6 +90,13 @@ interface DataContextValue {
   updateSettings(patch: Partial<Settings>): void;
   updateBudgets(items: Budget[]): void;
   updateExchangeRate(pair: string, rate: number): void;
+
+  /** Creates the month's plan with defaults if missing, else merges `patch` into the existing one. Upsert by `month` (yyyy-MM) — never duplicates. */
+  upsertMoneyPlan(
+    month: string,
+    patch: Partial<Pick<MonthlyMoneyPlan, "totalBudgetKrwMinor" | "hyundaiCardOverrideKrwMinor" | "includeRent">>
+  ): MonthlyMoneyPlan;
+  updateMoneyPlanBucketConfig(patch: Partial<MoneyPlanBucketConfig>): void;
 
   clearDemoData(): void;
   resetAllData(): void;
@@ -440,6 +451,41 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const upsertMoneyPlan = useCallback<DataContextValue["upsertMoneyPlan"]>((month, patch) => {
+    let result!: MonthlyMoneyPlan;
+    setData((prev) => {
+      const existing = prev.moneyPlans.find((p) => p.month === month);
+      let moneyPlans: MonthlyMoneyPlan[];
+      if (existing) {
+        result = { ...existing, ...patch, updatedAt: nowIso() };
+        moneyPlans = prev.moneyPlans.map((p) => (p.month === month ? result : p));
+      } else {
+        result = {
+          id: generateId("moneyplan"),
+          month,
+          totalBudgetKrwMinor: 0,
+          hyundaiCardOverrideKrwMinor: null,
+          includeRent: true,
+          ...patch,
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        };
+        moneyPlans = [...prev.moneyPlans, result];
+      }
+      repository.saveMoneyPlans(moneyPlans);
+      return { ...prev, moneyPlans };
+    });
+    return result;
+  }, []);
+
+  const updateMoneyPlanBucketConfig = useCallback<DataContextValue["updateMoneyPlanBucketConfig"]>((patch) => {
+    setData((prev) => {
+      const moneyPlanBucketConfig = { ...prev.moneyPlanBucketConfig, ...patch };
+      repository.saveMoneyPlanBucketConfig(moneyPlanBucketConfig);
+      return { ...prev, moneyPlanBucketConfig };
+    });
+  }, []);
+
   const clearDemoData = useCallback(() => {
     setData((prev) => {
       const next: AppData = {
@@ -502,8 +548,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     repository.saveImportBatches(next.importBatches);
     repository.saveMerchantRules(next.merchantRules);
     repository.saveExchangeRates(next.exchangeRates);
+    // Older exports (before "이번 달 돈 배치") won't carry these two fields —
+    // fall back to empty/default so an old JSON import doesn't crash the plan.
+    const moneyPlans = next.moneyPlans ?? [];
+    const moneyPlanBucketConfig = next.moneyPlanBucketConfig ?? DEFAULT_MONEY_PLAN_BUCKET_CONFIG;
+    repository.saveMoneyPlans(moneyPlans);
+    repository.saveMoneyPlanBucketConfig(moneyPlanBucketConfig);
     if (typeof window !== "undefined") window.localStorage.setItem(INIT_FLAG_KEY, "true");
-    setData(next);
+    setData({ ...next, moneyPlans, moneyPlanBucketConfig });
   }, []);
 
   const value = useMemo<DataContextValue>(
@@ -537,6 +589,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       updateBudgets,
       updateExchangeRate,
+      upsertMoneyPlan,
+      updateMoneyPlanBucketConfig,
       clearDemoData,
       resetAllData,
       seedDemoData,
@@ -572,6 +626,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       updateBudgets,
       updateExchangeRate,
+      upsertMoneyPlan,
+      updateMoneyPlanBucketConfig,
       clearDemoData,
       resetAllData,
       seedDemoData,

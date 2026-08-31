@@ -11,7 +11,7 @@ import type {
 import { buildDefaultCategories, categoryIdFor } from "@/lib/defaultCategories";
 import { toMinorUnits } from "@/lib/money";
 import { generateId } from "@/lib/id";
-import { DEFAULT_SETTINGS } from "@/lib/repository/localStorageRepository";
+import { DEFAULT_SETTINGS, DEFAULT_MONEY_PLAN_BUCKET_CONFIG } from "@/lib/repository/localStorageRepository";
 import { addDays, addMonths, format, startOfMonth, endOfMonth, setDate } from "date-fns";
 
 /** Small deterministic PRNG so demo data looks the same on every fresh seed. */
@@ -521,6 +521,8 @@ export function buildDemoData(referenceDate: Date = new Date()): AppData {
       reserveConfirmed: true,
       demoDataActive: true,
     },
+    moneyPlans: [],
+    moneyPlanBucketConfig: DEFAULT_MONEY_PLAN_BUCKET_CONFIG,
   };
 }
 

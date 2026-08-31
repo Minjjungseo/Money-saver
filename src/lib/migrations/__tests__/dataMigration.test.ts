@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AppData, Transaction } from "@/types";
 import { CANONICAL_TRANSACTIONS_2026 } from "@/data/canonicalTransactions2026";
 import { buildDefaultCategories } from "@/lib/defaultCategories";
-import { DEFAULT_SETTINGS } from "@/lib/repository";
+import { DEFAULT_SETTINGS, DEFAULT_MONEY_PLAN_BUCKET_CONFIG } from "@/lib/repository";
 import { runDataMigration } from "../dataMigration";
 
 /**
@@ -56,6 +56,8 @@ function buildPreMigrationStore(): AppData {
     merchantRules: [],
     exchangeRates: [{ pair: "AUD_KRW", rate: 900, updatedAt: "2026-01-01T00:00:00.000Z" }],
     settings: { ...DEFAULT_SETTINGS },
+    moneyPlans: [],
+    moneyPlanBucketConfig: DEFAULT_MONEY_PLAN_BUCKET_CONFIG,
   };
 }
 

@@ -9,6 +9,7 @@ import { useData } from "@/lib/context/DataContext";
 import { hasDemoData } from "@/lib/demoData";
 import { useHomeMetrics } from "@/hooks/useHomeMetrics";
 import { MonthSelector } from "@/components/home/MonthSelector";
+import { MoneyPlanCard } from "@/components/home/MoneyPlanCard";
 import { LivingBudgetCard } from "@/components/home/LivingBudgetCard";
 import { LivingBudgetFormSheet } from "@/components/home/LivingBudgetFormSheet";
 import { FixedVsVariableCard } from "@/components/home/FixedVsVariableCard";
@@ -80,6 +81,9 @@ export default function HomePage() {
       )}
 
       <div className="flex flex-col gap-4">
+        {/* 0. 이번 달 돈 배치 — 어느 계좌에 얼마를 두고 얼마를 환전해야 하는가 */}
+        <MoneyPlanCard />
+
         {/* 1. 이번 달 생활비 남은 금액 */}
         <LivingBudgetCard
           monthLabel={monthLabel}
