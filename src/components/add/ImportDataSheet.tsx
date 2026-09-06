@@ -4,16 +4,17 @@ import { useMemo, useRef, useState } from "react";
 import { FileSpreadsheet, FileJson, Wallet, TriangleAlert, Check } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
 import { useAddFlow } from "@/lib/context/AddFlowContext";
 import { useData } from "@/lib/context/DataContext";
 import { parseAccountsCsv, parseTransactionsCsv, type ParseTransactionsCsvResult, type TransactionCsvRow } from "@/lib/csv";
 import { matchCategoryByName } from "@/lib/merchantRules";
 import { findPossibleDuplicate } from "@/lib/duplicateDetection";
 import { formatMoney } from "@/lib/money";
-import type { AppData, CurrencyCode } from "@/types";
+import type { Account, AppData, CurrencyCode } from "@/types";
 
 type ImportKind = "TX_CSV" | "ACCOUNTS_CSV" | "JSON";
-type Step = "choose" | "select-account" | "preview" | "done";
+type Step = "choose" | "preview" | "done";
 
 export function ImportDataSheet() {
   const { mode, close } = useAddFlow();
@@ -27,7 +28,14 @@ export function ImportDataSheet() {
   const [importedDupCount, setImportedDupCount] = useState(0);
 
   const [txResult, setTxResult] = useState<ParseTransactionsCsvResult | null>(null);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  /**
+   * Per-row account assignment, index-aligned with txResult.rows — never a
+   * single value applied to the whole file, since a real bank/card export
+   * can mix accounts (e.g. CommBank and 하나트래블로그 transactions in one
+   * CSV). Pre-filled from the row's own account column when the file has
+   * one; null means "not chosen yet", which blocks that row from importing.
+   */
+  const [rowAccountIds, setRowAccountIds] = useState<(string | null)[]>([]);
   const [accountRows, setAccountRows] = useState<ReturnType<typeof parseAccountsCsv>["rows"]>([]);
   const [accountErrors, setAccountErrors] = useState<string[]>([]);
   const [jsonData, setJsonData] = useState<AppData | null>(null);
@@ -37,7 +45,7 @@ export function ImportDataSheet() {
     setStep("choose");
     setKind(null);
     setTxResult(null);
-    setSelectedAccountId(null);
+    setRowAccountIds([]);
     setAccountRows([]);
     setAccountErrors([]);
     setJsonData(null);
@@ -62,7 +70,17 @@ export function ImportDataSheet() {
     if (kind === "TX_CSV") {
       const result = parseTransactionsCsv(text);
       setTxResult(result);
-      setStep(result.hasAccountColumn ? "preview" : "select-account");
+      // The file's own account column (when present) pre-fills each row;
+      // a row whose name doesn't match any real account, or a file with no
+      // account column at all, starts unassigned — never guessed.
+      setRowAccountIds(
+        result.rows.map((row) => {
+          if (!row.accountName) return null;
+          const match = data.accounts.find((a) => a.name.toLowerCase() === row.accountName.toLowerCase());
+          return match?.id ?? null;
+        })
+      );
+      setStep("preview");
     } else if (kind === "ACCOUNTS_CSV") {
       const { rows, errors } = parseAccountsCsv(text);
       setAccountRows(rows);
@@ -84,26 +102,38 @@ export function ImportDataSheet() {
     }
   }
 
-  // For each parsed row, resolve its account (per-row column, or the single
-  // account picked when the file had none) and whether it already exists.
+  function setRowAccount(index: number, accountId: string | null) {
+    setRowAccountIds((prev) => prev.map((id, i) => (i === index ? accountId : id)));
+  }
+
+  function applyAccountToAll(accountId: string) {
+    setRowAccountIds((prev) => prev.map(() => accountId));
+  }
+
+  // For each parsed row: its assigned account (or none yet), resolved
+  // category, and — only once an account is actually assigned — whether it
+  // duplicates an existing transaction. A row with no account yet is never
+  // marked new or duplicate; it's simply "계좌 선택 필요" until resolved.
   const previewRows = useMemo(() => {
     if (!txResult) return [];
-    return txResult.rows.map((row) => {
-      const account = row.accountName
-        ? data.accounts.find((a) => a.name.toLowerCase() === row.accountName.toLowerCase())
-        : data.accounts.find((a) => a.id === selectedAccountId);
+    return txResult.rows.map((row, i) => {
+      const accountId = rowAccountIds[i] ?? null;
+      const account = accountId ? data.accounts.find((a) => a.id === accountId) ?? null : null;
       const categoryId = matchCategoryByName(row.categoryName, data.categories);
       const category = categoryId ? data.categories.find((c) => c.id === categoryId) : null;
-      const duplicateOf = findPossibleDuplicate(
-        { date: row.date, amountMinor: row.amountMinor, merchant: row.merchant, accountId: account?.id ?? null, currency: row.currency },
-        data.transactions
-      );
+      const duplicateOf = account
+        ? findPossibleDuplicate(
+            { date: row.date, amountMinor: row.amountMinor, merchant: row.merchant, accountId: account.id, currency: row.currency },
+            data.transactions
+          )
+        : null;
       return { row, account, categoryId, categoryName: category?.name ?? null, duplicateOf };
     });
-  }, [txResult, data.accounts, data.categories, data.transactions, selectedAccountId]);
+  }, [txResult, rowAccountIds, data.accounts, data.categories, data.transactions]);
 
-  const newRows = previewRows.filter((r) => !r.duplicateOf);
-  const dupRowCount = previewRows.length - newRows.length;
+  const needsAccountRows = previewRows.filter((r) => !r.account);
+  const dupRows = previewRows.filter((r) => r.account && r.duplicateOf);
+  const importableRows = previewRows.filter((r) => r.account && !r.duplicateOf);
   const totalsByCurrency = useMemo(() => {
     const totals = new Map<CurrencyCode, number>();
     for (const { row } of previewRows) {
@@ -115,7 +145,7 @@ export function ImportDataSheet() {
   function confirmTxImport() {
     if (!txResult) return;
     bulkAddTransactions(
-      newRows.map(({ row, account, categoryId }) => ({
+      importableRows.map(({ row, account, categoryId }) => ({
         date: row.date,
         merchant: row.merchant,
         amountMinor: row.amountMinor,
@@ -137,8 +167,8 @@ export function ImportDataSheet() {
       })),
       { source: "CSV_IMPORT", fileRef: null }
     );
-    setImportedCount(newRows.length);
-    setImportedDupCount(dupRowCount);
+    setImportedCount(importableRows.length);
+    setImportedDupCount(dupRows.length);
     setStep("done");
   }
 
@@ -202,57 +232,59 @@ export function ImportDataSheet() {
         </div>
       )}
 
-      {step === "select-account" && txResult && (
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl bg-warn-soft px-3.5 py-3 text-[13px] text-warn">
-            이 파일에는 계좌를 나타내는 컬럼이 없어요. 이 {txResult.rows.length}건이 어느 계좌에서 결제됐는지 선택해 주세요.
-          </div>
-          {data.accounts.length === 0 ? (
-            <p className="text-[13px] text-ink-muted">먼저 계좌를 하나 이상 등록해야 계좌를 선택할 수 있어요.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {data.accounts.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelectedAccountId(a.id)}
-                  className={`flex items-center justify-between rounded-xl border px-3.5 py-3 text-left text-[14px] font-medium transition-colors ${
-                    selectedAccountId === a.id
-                      ? "border-accent bg-accent-soft text-accent"
-                      : "border-border bg-surface text-ink hover:bg-surface-muted"
-                  }`}
-                >
-                  {a.name}
-                  <span className="text-[12px] font-normal text-ink-faint">{a.currency}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <Button variant="accent" size="lg" disabled={!selectedAccountId} onClick={() => setStep("preview")}>
-            선택한 계좌로 계속하기
-          </Button>
-        </div>
-      )}
-
       {step === "preview" && kind === "TX_CSV" && txResult && (
         <div className="flex flex-col gap-4">
           <ErrorSummary result={txResult} />
+
+          {!txResult.hasAccountColumn && data.accounts.length > 0 && (
+            <div className="rounded-xl border border-border bg-surface px-3.5 py-3">
+              <p className="text-[13px] font-medium text-ink">전체 계좌 지정</p>
+              <p className="mt-0.5 text-[12px] text-ink-faint">
+                이 파일엔 계좌 컬럼이 없어요. 먼저 전체에 하나를 적용한 뒤, 아래에서 계좌가 다른 거래만 따로 바꿔주세요.
+              </p>
+              <Select
+                value=""
+                onChange={(e) => e.target.value && applyAccountToAll(e.target.value)}
+                className="mt-2 h-9 text-[13px]"
+              >
+                <option value="">전체를 적용할 계좌 선택…</option>
+                {data.accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    전체를 {a.name}(으)로 설정
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
 
           <div className="rounded-xl bg-surface-muted px-3.5 py-3 text-[14px] text-ink">
             <p className="font-medium">
               {previewRows.length}건 · 총{" "}
               {[...totalsByCurrency.entries()].map(([cur, minor]) => formatMoney(minor, cur)).join(" + ") || "0"}
             </p>
-            {dupRowCount > 0 && <p className="mt-1 text-ink-muted">이미 등록된 것으로 보이는 {dupRowCount}건은 제외하고 불러와요.</p>}
+            <p className="mt-1 text-ink-muted">
+              Import 가능 {importableRows.length}건
+              {needsAccountRows.length > 0 && ` · 계좌 확인 필요 ${needsAccountRows.length}건`}
+              {dupRows.length > 0 && ` · 이미 등록됨 ${dupRows.length}건`}
+            </p>
           </div>
 
           <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
             {previewRows.map(({ row, account, categoryName, duplicateOf }, i) => (
-              <PreviewRow key={i} row={row} accountName={account?.name ?? null} categoryName={categoryName} isDuplicate={!!duplicateOf} />
+              <PreviewRow
+                key={i}
+                row={row}
+                accounts={data.accounts}
+                accountId={rowAccountIds[i] ?? null}
+                onAccountChange={(id) => setRowAccount(i, id)}
+                categoryName={categoryName}
+                isDuplicate={!!account && !!duplicateOf}
+              />
             ))}
           </div>
 
-          <Button variant="accent" size="lg" disabled={newRows.length === 0} onClick={confirmTxImport}>
-            {newRows.length}건 불러오기 확정
+          <Button variant="accent" size="lg" disabled={importableRows.length === 0} onClick={confirmTxImport}>
+            {importableRows.length}건 불러오기 확정
           </Button>
         </div>
       )}
@@ -341,30 +373,49 @@ function ErrorSummary({ result }: { result: ParseTransactionsCsvResult }) {
 
 function PreviewRow({
   row,
-  accountName,
+  accounts,
+  accountId,
+  onAccountChange,
   categoryName,
   isDuplicate,
 }: {
   row: TransactionCsvRow;
-  accountName: string | null;
+  accounts: Account[];
+  accountId: string | null;
+  onAccountChange: (accountId: string | null) => void;
   categoryName: string | null;
   isDuplicate: boolean;
 }) {
+  const status = !accountId ? "계좌 선택 필요" : isDuplicate ? "이미 등록됨" : "추가 예정";
+  const statusColor = !accountId ? "text-warn" : isDuplicate ? "text-ink-faint" : "text-accent";
+
   return (
-    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-[13px]">
-      <div className="min-w-0">
-        <p className="truncate font-medium text-ink">{row.merchant}</p>
-        <p className="truncate text-[12px] text-ink-faint">
-          {row.date}
-          {row.time ? ` ${row.time}` : ""} · {categoryName ?? (row.categoryName || "미분류")} · {accountName ?? "계좌 미확인"}
-        </p>
+    <div className="flex flex-col gap-2 px-3.5 py-2.5 text-[13px]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-medium text-ink">{row.merchant}</p>
+          <p className="truncate text-[12px] text-ink-faint">
+            {row.date}
+            {row.time ? ` ${row.time}` : ""} · {categoryName ?? (row.categoryName || "미분류")}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-medium tabular-nums text-ink">{formatMoney(row.amountMinor, row.currency)}</p>
+          <p className={`text-[11px] font-medium ${statusColor}`}>{status}</p>
+        </div>
       </div>
-      <div className="shrink-0 text-right">
-        <p className="font-medium tabular-nums text-ink">{formatMoney(row.amountMinor, row.currency)}</p>
-        <p className={`text-[11px] font-medium ${isDuplicate ? "text-ink-faint" : "text-accent"}`}>
-          {isDuplicate ? "이미 등록됨" : "추가 예정"}
-        </p>
-      </div>
+      <Select
+        value={accountId ?? ""}
+        onChange={(e) => onAccountChange(e.target.value || null)}
+        className={`h-8 text-[12px] ${!accountId ? "border-warn" : ""}`}
+      >
+        <option value="">계좌 선택 필요</option>
+        {accounts.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name} ({a.currency})
+          </option>
+        ))}
+      </Select>
     </div>
   );
 }
