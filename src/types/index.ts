@@ -338,6 +338,25 @@ export interface Settings {
   dataMigrationVersion: number;
   /** Diagnostic summary of the most recent migration run, or null if none has run yet. */
   dataMigrationSummary?: DataMigrationSummary | null;
+  /**
+   * One-time version for the small, independent addition of specific
+   * confirmed real transactions found in a person's bank-app screenshots
+   * (see lib/migrations/bankScreenshotTransactions2026.ts) — kept separate
+   * from dataMigrationVersion/dataMigrationSummary above so this ad-hoc,
+   * personal addition never entangles with the general 611-transaction
+   * backfill's own versioning and tests. 0 = never run.
+   */
+  bankScreenshotMigrationVersion: number;
+  bankScreenshotMigrationSummary?: BankScreenshotMigrationSummary | null;
+}
+
+export interface BankScreenshotMigrationSummary {
+  version: number;
+  ranAt: string;
+  added: number;
+  duplicatesSkipped: number;
+  /** Always 1 today (the still-Pending Amazon charge) — excluded because the app has no pending-transaction concept, never silently dropped without being counted here. */
+  pendingExcluded: number;
 }
 
 /**

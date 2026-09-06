@@ -29,6 +29,10 @@ import { buildDemoData } from "@/lib/demoData";
 import { buildDefaultCategories } from "@/lib/defaultCategories";
 import { generateId, nowIso } from "@/lib/id";
 import { DATA_MIGRATION_TARGET_VERSION, runDataMigration } from "@/lib/migrations/dataMigration";
+import {
+  BANK_SCREENSHOT_MIGRATION_TARGET_VERSION,
+  addKnownBankScreenshotTransactions,
+} from "@/lib/migrations/bankScreenshotTransactions2026";
 
 const INIT_FLAG_KEY = "money-os:v1:initialized";
 
@@ -162,6 +166,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             finalData = loaded;
           }
         }
+
+        if ((finalData.settings.bankScreenshotMigrationVersion ?? 0) < BANK_SCREENSHOT_MIGRATION_TARGET_VERSION) {
+          try {
+            const { transactions, added, duplicatesSkipped, pendingExcluded } = addKnownBankScreenshotTransactions(finalData);
+            finalData = {
+              ...finalData,
+              transactions,
+              settings: {
+                ...finalData.settings,
+                bankScreenshotMigrationVersion: BANK_SCREENSHOT_MIGRATION_TARGET_VERSION,
+                bankScreenshotMigrationSummary: { version: BANK_SCREENSHOT_MIGRATION_TARGET_VERSION, ranAt: nowIso(), added, duplicatesSkipped, pendingExcluded },
+              },
+            };
+            await Promise.all([repository.saveTransactions(finalData.transactions), repository.saveSettings(finalData.settings)]);
+          } catch (err) {
+            // Same never-advance-on-failure contract as the migration above.
+            console.error("Money OS bank-screenshot transaction addition failed; will retry on next load.", err);
+          }
+        }
+
         if (!cancelled) setData(finalData);
       }
       if (!cancelled) setLoading(false);

@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   demoDataActive: false,
   dataMigrationVersion: 0,
   dataMigrationSummary: null,
+  bankScreenshotMigrationVersion: 0,
+  bankScreenshotMigrationSummary: null,
 };
 
 export const DEFAULT_MONEY_PLAN_BUCKET_CONFIG: MoneyPlanBucketConfig = {

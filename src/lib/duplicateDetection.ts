@@ -1,18 +1,22 @@
 import { differenceInCalendarDays } from "date-fns";
-import type { Transaction } from "@/types";
+import type { CurrencyCode, Transaction } from "@/types";
 
 interface DuplicateCandidate {
   date: string;
   amountMinor: number;
   merchant: string;
   accountId: string | null;
+  /** Optional — when supplied, a currency mismatch never counts as a duplicate (same numeric amount in AUD vs KRW is not the same transaction). */
+  currency?: CurrencyCode;
 }
 
 /**
- * Flags likely duplicate imports (e.g. the same bank screenshot uploaded twice).
- * Matches on date proximity + exact amount + merchant similarity + account, per
- * the product spec. Never auto-deletes — callers surface this as a warning and
- * let the user decide.
+ * Flags likely duplicate imports (e.g. the same bank screenshot uploaded twice,
+ * or the same real-world transaction arriving via two different sources).
+ * Matches on date proximity + exact amount (+ currency, when known) + merchant
+ * similarity + account, per the product spec's date+account+merchant+amount
+ * +currency fingerprint. Never auto-deletes — callers surface this as a
+ * warning and let the user decide.
  */
 export function findPossibleDuplicate(
   candidate: DuplicateCandidate,
@@ -23,6 +27,7 @@ export function findPossibleDuplicate(
 
   for (const tx of existing) {
     if (tx.amountMinor !== candidate.amountMinor) continue;
+    if (candidate.currency && tx.currency !== candidate.currency) continue;
     if (candidate.accountId && tx.accountId && tx.accountId !== candidate.accountId) continue;
 
     const txDate = new Date(`${tx.date}T00:00:00`);

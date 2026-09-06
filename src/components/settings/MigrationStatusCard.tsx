@@ -2,6 +2,7 @@
 
 import { useData } from "@/lib/context/DataContext";
 import { DATA_MIGRATION_TARGET_VERSION } from "@/lib/migrations/dataMigration";
+import { BANK_SCREENSHOT_MIGRATION_TARGET_VERSION } from "@/lib/migrations/bankScreenshotTransactions2026";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -48,6 +49,31 @@ export function MigrationStatusCard() {
       <Row label="반복 지출 항목" value={`${recurringExpenses.length}개 (업서트 ${summary.recurringExpensesUpserted}개)`} />
       <Row label="생활비 예산" value={summary.budgetCreated ? "기본값 생성됨" : "기존 값 유지"} />
       <Row label="생성 / 삭제" value={`${summary.created} / ${summary.deleted}`} />
+      <BankScreenshotRows />
     </div>
+  );
+}
+
+/** Separate diagnostic block for the small, independent bank-screenshot transaction addition — see bankScreenshotTransactions2026.ts. */
+function BankScreenshotRows() {
+  const { data } = useData();
+  const { settings } = data;
+  const summary = settings.bankScreenshotMigrationSummary;
+
+  if (!settings.bankScreenshotMigrationVersion || !summary) {
+    return (
+      <Row
+        label="은행 스크린샷 거래 추가"
+        value={`실행 안 됨 (v0 / 목표 v${BANK_SCREENSHOT_MIGRATION_TARGET_VERSION})`}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Row label="은행 스크린샷 거래 추가" value={`v${settings.bankScreenshotMigrationVersion} 완료 · ${new Date(summary.ranAt).toLocaleString("ko-KR")}`} />
+      <Row label="신규 추가 / 중복 제외" value={`${summary.added}건 / ${summary.duplicatesSkipped}건`} />
+      <Row label="정산 대기(Pending) 제외" value={`${summary.pendingExcluded}건`} />
+    </>
   );
 }
