@@ -419,14 +419,25 @@ export interface AppData {
 /** A candidate transaction produced by the image parser, pending user review. */
 export interface ParsedTransactionCandidate {
   id: string;
-  date: string;
-  merchant: string;
-  amountMinor: number;
+  /** Null when the date in this row couldn't be confidently read (e.g. cut off at the screen edge) — never defaulted to today. */
+  date: string | null;
+  /** Free-text time-of-day read from the row (e.g. "12:31"), if the screenshot shows one; not stored on Transaction (no time-of-day field), shown for review only. */
+  time: string | null;
+  /** Null when unreadable — never defaulted to a placeholder string; see needsReview. */
+  merchant: string | null;
+  /** Null when unreadable/ambiguous (e.g. confused with a balance figure) — never defaulted to 0; see needsReview. */
+  amountMinor: number | null;
   currency: CurrencyCode;
   transactionType: TransactionType;
+  /** True for a row the screenshot itself marks as not yet settled (e.g. "PENDING") — never importable as a confirmed expense. */
+  pending: boolean;
   suggestedCategoryId: string | null;
   suggestedSubcategory: string | null;
   suggestedAccountId: string | null;
   confidence: number;
   possibleDuplicateOfId: string | null;
+  /** True when date/merchant/amount is missing or the row was visibly cut off — blocks import until a person fills in the gap; never guessed. */
+  needsReview: boolean;
+  /** Human-readable reason shown next to the "확인 필요" badge, e.g. "이미지에서 금액이 잘려 보이지 않아요". Null when needsReview is false. */
+  reviewReason: string | null;
 }
