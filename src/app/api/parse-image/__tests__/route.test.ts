@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { POST } from "../route";
+import { GET, POST } from "../route";
 
 function makeRequest(body: unknown): NextRequest {
   return new NextRequest("http://localhost/api/parse-image", {
@@ -106,5 +106,26 @@ describe("POST /api/parse-image", () => {
 
     expect(json.provider).toBe("mock");
     expect(json.reason).toBe("api_error");
+  });
+});
+
+describe("GET /api/parse-image (configuration status check)", () => {
+  const originalKey = process.env.ANTHROPIC_API_KEY;
+
+  afterEach(() => {
+    if (originalKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = originalKey;
+  });
+
+  it("reports configured:false when no API key is set — never leaks the key itself either way", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    const json = await (await GET()).json();
+    expect(json).toEqual({ configured: false });
+  });
+
+  it("reports configured:true when an API key is set", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    const json = await (await GET()).json();
+    expect(json).toEqual({ configured: true });
   });
 });

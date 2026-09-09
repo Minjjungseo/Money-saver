@@ -27,15 +27,16 @@ const SYSTEM_PROMPT = `You read a screenshot of a banking app's transaction list
 
 What counts as a transaction row: a single line item showing a specific payment, purchase, transfer, or deposit with its own date/time and amount.
 
-What is NOT a transaction row — never turn these into an entry:
+What is NOT a transaction row — never turn these into an entry, and never read data out of them:
 - The account name or account holder's name
 - "Current balance" / "Available balance" / total balance shown at the top
 - Section date headers like "Today", "Yesterday", "9월6일(일)" that group rows below them (use them to infer the date of the rows under them, but never emit the header itself as a row)
 - Buttons, tabs, filters, search icons, navigation labels, promotional banners
+- The PHONE'S OWN status bar at the very top of the screenshot (the clock, battery percentage, signal/wifi icons) — this shows the moment the screenshot was taken, which is completely unrelated to any transaction's date. Never use it as a transaction date, never let it bias what "today" means for resolving a section header.
 
 For EACH real transaction row, extract:
 {
-  "date": "YYYY-MM-DD, resolved using any section header above the row (e.g. a header of '9월6일' becomes this year's Sep 6) — or null if genuinely unreadable. Never guess a date; use null instead.",
+  "date": "YYYY-MM-DD, resolved ONLY from a section header or date text actually printed inside the transaction list above this row (e.g. a header of '9월6일' becomes this year's Sep 6). NEVER derive this from the phone status bar clock, from any other assumption about 'today', or from any date not visibly printed in the list itself. If you cannot find a date actually printed above the row, use null — a null date is far better than a wrong guess.",
   "time": "HH:MM exactly as shown (24h), or null if the row has no time shown",
   "merchant": "the merchant/payee/description text exactly as shown, or null if it's cut off / unreadable — do NOT invent a name",
   "amount": "the transaction amount only, as a positive number in major units (e.g. 84.53) — NEVER the balance/running-total number shown after it, and NEVER a time value. If the amount is not fully visible or you are not confident, use null rather than guessing.",
@@ -63,6 +64,17 @@ Return ONLY a JSON object (no prose, no markdown fences) of the shape:
 { "bankHint": string | null, "transactions": [ ...rows as described above... ] }
 
 If the image contains multiple transaction rows, return ALL of them in the transactions array — never stop after the first one. If nothing readable is found, return { "bankHint": null, "transactions": [] }.`;
+
+/**
+ * Lets the client know BEFORE a person even uploads an image whether real
+ * Vision recognition will run at all, instead of them finding out only
+ * after getting back generic mock data (hardcoded "Woolworths"/"Local
+ * Cafe" rows dated today) with no way to tell it apart from a real,
+ * badly-misread result. Reveals only a boolean — never the key itself.
+ */
+export async function GET() {
+  return NextResponse.json({ configured: !!process.env.ANTHROPIC_API_KEY });
+}
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;

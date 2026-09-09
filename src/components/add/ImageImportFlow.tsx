@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Camera, Check, Loader2, TriangleAlert } from "lucide-react";
@@ -43,6 +43,25 @@ export function ImageImportFlow() {
   const [provider, setProvider] = useState<"claude-vision" | "mock" | null>(null);
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [importedCount, setImportedCount] = useState(0);
+  /** Whether the server actually has Vision configured — checked as soon as this sheet opens, so "it's not recognizing anything" is answered before a person even uploads, instead of them guessing from the result afterward. */
+  const [visionConfigured, setVisionConfigured] = useState<boolean | null>(null);
+  const [mockAcknowledged, setMockAcknowledged] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/parse-image")
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled) setVisionConfigured(!!json.configured);
+      })
+      .catch(() => {
+        if (!cancelled) setVisionConfigured(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   function reset() {
     setStep("upload");
@@ -50,6 +69,7 @@ export function ImageImportFlow() {
     setFileName(null);
     setProvider(null);
     setCandidates([]);
+    setMockAcknowledged(false);
   }
 
   function handleClose() {
@@ -136,6 +156,15 @@ export function ImageImportFlow() {
     <Sheet open={open} onClose={handleClose} title={step === "review" ? "인식된 내역 확인" : "이미지로 추가"}>
       {step === "upload" && (
         <div className="flex flex-col items-center gap-4 py-4 text-center">
+          {visionConfigured === false && (
+            <div className="flex items-start gap-2 rounded-xl bg-warn-soft px-3.5 py-3 text-left text-[13px] text-warn">
+              <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+              <span>
+                이 앱에는 아직 실제 이미지 인식이 설정되지 않았어요. 지금 올리는 이미지는 실제로 읽히지 않고,
+                예시(mock) 데이터가 대신 표시돼요 — 날짜·가맹점·금액이 이미지 내용과 무관할 수 있어요.
+              </span>
+            </div>
+          )}
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Camera size={28} />
           </div>
@@ -183,12 +212,24 @@ export function ImageImportFlow() {
           )}
 
           {provider === "mock" && (
-            <div className="flex items-start gap-2 rounded-xl bg-warn-soft px-3.5 py-3 text-[13px] text-warn">
-              <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-              <span>
-                이미지 인식 API가 설정되지 않아 예시 항목을 보여드리고 있어요. 실제 이미지 내용에 맞게 직접
-                수정해주시거나, ANTHROPIC_API_KEY를 설정하면 실제 이미지 인식이 켜져요.
-              </span>
+            <div className="flex flex-col gap-2 rounded-xl bg-warn-soft px-3.5 py-3 text-[13px] text-warn">
+              <div className="flex items-start gap-2">
+                <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+                <span>
+                  <strong>이 아래 내용은 이 이미지에서 읽은 게 아니에요.</strong> 실제 이미지 인식 API가 설정되지
+                  않아 예시(mock) 항목을 대신 보여드리고 있어요 — 날짜·가맹점·금액이 실제 이미지와 다를 수 있으니
+                  그대로 저장하면 안 돼요. 직접 값을 고치거나, 관리자에게 이미지 인식 설정을 요청해주세요.
+                </span>
+              </div>
+              <label className="flex items-center gap-2 pl-6 text-[12px] font-medium">
+                <input
+                  type="checkbox"
+                  checked={mockAcknowledged}
+                  onChange={(e) => setMockAcknowledged(e.target.checked)}
+                  className="h-4 w-4 accent-warn"
+                />
+                예시 데이터라는 걸 확인했어요. 아래 값을 실제 내용에 맞게 고친 뒤 추가할게요.
+              </label>
             </div>
           )}
 
@@ -216,7 +257,12 @@ export function ImageImportFlow() {
               </div>
             </>
           )}
-          <Button variant="accent" size="lg" disabled={includedCount === 0} onClick={handleConfirmImport}>
+          <Button
+            variant="accent"
+            size="lg"
+            disabled={includedCount === 0 || (provider === "mock" && !mockAcknowledged)}
+            onClick={handleConfirmImport}
+          >
             내역에 추가 ({includedCount})
           </Button>
         </div>
