@@ -16,13 +16,13 @@ export function exportJSON(d: AppData): string {
 }
 
 export interface ImportStats {
-  added: { regions: number; apartments: number; units: number; prices: number; notes: number }
+  added: { regions: number; apartments: number; units: number; prices: number; notes: number; livingAreas: number; candidates: number }
   duplicates: number
   errors: { line: number | null; message: string }[]
 }
 
 function emptyStats(): ImportStats {
-  return { added: { regions: 0, apartments: 0, units: 0, prices: 0, notes: 0 }, duplicates: 0, errors: [] }
+  return { added: { regions: 0, apartments: 0, units: 0, prices: 0, notes: 0, livingAreas: 0, candidates: 0 }, duplicates: 0, errors: [] }
 }
 
 const KINDS = new Set(['sale', 'jeonse'])
@@ -77,6 +77,8 @@ export function mergeData(cur: AppData, incoming: AppData): { data: AppData; sta
   const apartments = pick(cur.apartments, incoming.apartments, 'apartments')
   const units = pick(cur.units, incoming.units, 'units')
   const notes = pick(cur.notes, incoming.notes, 'notes')
+  const livingAreas = pick(cur.livingAreas, incoming.livingAreas, 'livingAreas')
+  const candidates = pick(cur.candidates, incoming.candidates, 'candidates')
   const ids = new Set(cur.prices.map((p) => p.id))
   const keys = new Set(cur.prices.map(priceDedupeKey))
   const prices = [...cur.prices]
@@ -91,7 +93,7 @@ export function mergeData(cur: AppData, incoming: AppData): { data: AppData; sta
     prices.push(p)
     stats.added.prices++
   }
-  return { data: { ...cur, regions, apartments, units, notes, prices }, stats }
+  return { data: { ...cur, regions, apartments, units, notes, livingAreas, candidates, prices }, stats }
 }
 
 // ================= CSV =================

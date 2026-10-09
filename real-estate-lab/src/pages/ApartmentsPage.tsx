@@ -8,6 +8,8 @@ import { ApartmentList } from '@/components/ApartmentList'
 import { EmptyState, PageHeader } from '@/components/bits'
 import { apartmentUrl } from '@/lib/routes'
 import { regionPath, summarize, type AptSummary } from '@/lib/selectors'
+import { AGE_LABEL, AREA_LABEL, HOUSEHOLD_LABEL, ageBucket, areaBucket, householdBucket, type AgeBucket, type AreaBucket, type HouseholdBucket } from '@/lib/compare'
+import { WON_PER_EOK } from '@/lib/money'
 import { useData } from '@/store/store'
 import { REGION_GROUP_LABEL, type RegionGroup } from '@/store/schema'
 
@@ -44,6 +46,15 @@ export function ApartmentsPage() {
   const [sort, setSort] = useState<Sort>('saleDesc')
   const [landmarkOnly, setLandmarkOnly] = useState(false)
   const [adding, setAdding] = useState(false)
+  // 비슷한 조건 필터
+  const [age, setAge] = useState<AgeBucket | ''>('')
+  const [hh, setHh] = useState<HouseholdBucket | ''>('')
+  const [areaB, setAreaB] = useState<AreaBucket | ''>('')
+  const [minEok, setMinEok] = useState('')
+  const [maxEok, setMaxEok] = useState('')
+  const [livingArea, setLivingArea] = useState('')
+  const year = new Date().getFullYear()
+  const condCount = [age, hh, areaB, minEok, maxEok, livingArea].filter(Boolean).length
 
   const groupOf = useMemo(() => new Map(data.regions.map((r) => [r.id, r.group])), [data.regions])
   const sidos = data.regions.filter((r) => r.type === 'sido' && (!group || r.group === group))
@@ -55,7 +66,18 @@ export function ApartmentsPage() {
       .filter((a) => !group || groupOf.get(a.regionId) === group)
       .filter((a) => !sido || a.regionId === sido || a.regionId.startsWith(`${sido}/`))
       .filter((a) => !query || (a.name + regionPath(data, a.regionId) + (a.address ?? '')).replace(/\s/g, '').includes(query))
+      .filter((a) => !age || ageBucket(a.builtYear, year) === age)
+      .filter((a) => !hh || householdBucket(a.households) === hh)
+      .filter((a) => !livingArea || data.livingAreas.find((l) => l.id === livingArea)?.apartmentIds.includes(a.id))
       .map((a) => summarize(data, a))
+      .filter((s) => !areaB || areaBucket(s.unit) === areaB)
+      .filter((s) => {
+        const lo = minEok ? Number(minEok) * WON_PER_EOK : null
+        const hi = maxEok ? Number(maxEok) * WON_PER_EOK : null
+        if (lo == null && hi == null) return true
+        if (!s.sale) return false
+        return (lo == null || s.sale.amountWon >= lo) && (hi == null || s.sale.amountWon <= hi)
+      })
     const cmp: Record<Sort, (a: AptSummary, b: AptSummary) => number> = {
       name: (a, b) => a.apartment.name.localeCompare(b.apartment.name, 'ko'),
       saleDesc: byNullable((s) => s.sale?.amountWon ?? null, -1),
@@ -66,7 +88,7 @@ export function ApartmentsPage() {
       recent: byNullable((s) => s.lastSurvey, -1),
     }
     return list.sort(cmp[sort])
-  }, [data, q, group, sido, sort, landmarkOnly, groupOf])
+  }, [data, q, group, sido, sort, landmarkOnly, groupOf, age, hh, areaB, minEok, maxEok, livingArea, year])
 
   return (
     <>
@@ -113,6 +135,40 @@ export function ApartmentsPage() {
           대표 단지만
         </label>
       </div>
+
+      <details className="mb-4 rounded-xl border bg-card" open={condCount > 0}>
+        <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium">
+          비슷한 조건끼리 보기 {condCount > 0 && <span className="ml-1 rounded bg-accent px-1.5 text-xs text-primary">{condCount}개 적용</span>}
+        </summary>
+        <div className="grid grid-cols-2 gap-2 px-4 pb-4 md:grid-cols-6">
+          <Select value={age} onChange={(e) => setAge(e.target.value as AgeBucket | '')} aria-label="연식">
+            <option value="">연식 전체</option>
+            {Object.entries(AGE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+          <Select value={hh} onChange={(e) => setHh(e.target.value as HouseholdBucket | '')} aria-label="세대수">
+            <option value="">세대수 전체</option>
+            {Object.entries(HOUSEHOLD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+          <Select value={areaB} onChange={(e) => setAreaB(e.target.value as AreaBucket | '')} aria-label="전용면적">
+            <option value="">전용면적 전체</option>
+            {Object.entries(AREA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+          <Input inputMode="decimal" value={minEok} onChange={(e) => setMinEok(e.target.value.replace(/[^\d.]/g, ''))} placeholder="매매 최소(억)" aria-label="매매 최소 억" />
+          <Input inputMode="decimal" value={maxEok} onChange={(e) => setMaxEok(e.target.value.replace(/[^\d.]/g, ''))} placeholder="매매 최대(억)" aria-label="매매 최대 억" />
+          <Select value={livingArea} onChange={(e) => setLivingArea(e.target.value)} aria-label="생활권">
+            <option value="">생활권 전체</option>
+            {data.livingAreas.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </Select>
+          <p className="col-span-2 text-xs text-muted-foreground md:col-span-6">
+            면적 필터는 확인된 전용면적만 씁니다(평형만 있는 단지는 '전용면적 미확인'). 가격 필터는 대표 면적의 최신 매매가 기준이며 가격이 없는 단지는 빠집니다.
+            {condCount > 0 && (
+              <button className="ml-2 underline" onClick={() => { setAge(''); setHh(''); setAreaB(''); setMinEok(''); setMaxEok(''); setLivingArea('') }}>
+                조건 초기화
+              </button>
+            )}
+          </p>
+        </div>
+      </details>
 
       {data.apartments.length === 0 ? (
         <EmptyState title="등록된 단지가 없습니다" action={<Button onClick={() => setAdding(true)}>단지 추가</Button>} />

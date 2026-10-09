@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, Pencil, PenLine, Star, Trash2 } from 'lucide-react'
+import { ChevronRight, GitCompareArrows, Lightbulb, Pencil, PenLine, Star, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { ApartmentFormDialog } from '@/components/ApartmentFormDialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PriceEditDialog } from '@/components/PriceEditDialog'
 import { UnitEditDialog } from '@/components/UnitEditDialog'
+import { CandidateFormDialog } from '@/components/CandidateFormDialog'
 import { PriceHistoryChart, RatioChart } from '@/components/PriceCharts'
 import { ChangeText, EmptyState, PriceTypeBadge, SampleBadge, SourceLink, Warn } from '@/components/bits'
 import { toast } from '@/components/toast'
@@ -21,7 +22,7 @@ import { formatKoreanWon, formatPct } from '@/lib/money'
 import { inputUrl, regionUrl } from '@/lib/routes'
 import { regionPath, unitChip, unitLabel, unitsOf } from '@/lib/selectors'
 import { cn } from '@/lib/utils'
-import { deleteApartment, deletePrice, updateApartment } from '@/store/ops'
+import { addToCompare, deleteApartment, deletePrice, MAX_COMPARE, updateApartment } from '@/store/ops'
 import { update, useData } from '@/store/store'
 import { PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type ApartmentUnit, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
 
@@ -40,12 +41,16 @@ export function ApartmentDetailPage() {
   const [editRec, setEditRec] = useState<PriceRecord | null>(null)
   const [delRec, setDelRec] = useState<PriceRecord | null>(null)
   const [editUnit, setEditUnit] = useState<ApartmentUnit | null>(null)
+  const [candidateOpen, setCandidateOpen] = useState(false)
 
   const unit = units.find((u) => u.id === unitPick) ?? units.find((u) => data.prices.some((p) => p.unitId === u.id)) ?? units[0] ?? null
   const prices = useMemo(() => (unit ? data.prices.filter((p) => p.unitId === unit.id) : []), [data.prices, unit])
 
   if (!apt) return <Navigate to="/apartments" replace />
 
+  const inCompare = data.settings.compare.some((x) => x.apartmentId === apt.id)
+  const myAreas = data.livingAreas.filter((l) => l.apartmentIds.includes(apt.id))
+  const myCandidates = data.candidates.filter((c) => c.target.apartmentId === apt.id).length
   const allAptPrices = data.prices.filter((p) => units.some((u) => u.id === p.unitId))
   const now = unit ? currentRatio(prices, unit.id) : null
   const presentSeries = KINDS.flatMap((k) => TYPES.map((t) => ({ kind: k, type: t, list: unit ? seriesOf(prices, unit.id, k, t) : [] }))).filter((s) => s.list.length > 0)
@@ -84,6 +89,21 @@ export function ApartmentDetailPage() {
               시세 입력
             </Button>
           </Link>
+          <Button
+            variant="secondary"
+            disabled={inCompare || data.settings.compare.length >= MAX_COMPARE}
+            onClick={() => {
+              update((d) => addToCompare(d, { apartmentId: apt.id, unitId: unit?.id ?? null }))
+              toast('비교 목록에 추가했습니다')
+            }}
+          >
+            <GitCompareArrows />
+            {inCompare ? '비교 목록에 있음' : '비교에 추가'}
+          </Button>
+          <Button variant="outline" onClick={() => setCandidateOpen(true)}>
+            <Lightbulb />
+            저평가 후보로 저장
+          </Button>
           <Button variant="outline" onClick={() => setEditing(true)}>
             <Pencil />
             수정
@@ -99,6 +119,25 @@ export function ApartmentDetailPage() {
           <Info label="주소" value={apt.address} className="col-span-2" />
           <Info label="준공연도" value={apt.builtYear ? `${apt.builtYear}년 (${age}년차)` : null} />
           <Info label="세대수" value={apt.households ? `${apt.households.toLocaleString('ko-KR')}세대` : null} />
+          <Info label="교통" value={apt.transitMemo} className="col-span-2 sm:col-span-4 lg:col-span-2" />
+          <Info label="학군" value={apt.schoolMemo} />
+          <Info label="생활 인프라" value={apt.infraMemo} />
+          <div className="col-span-2 sm:col-span-4">
+            <div className="text-xs text-muted-foreground">생활권</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {myAreas.length === 0 && <span className="text-muted-foreground">없음 — [생활권] 화면에서 묶을 수 있어요</span>}
+              {myAreas.map((l) => (
+                <Link key={l.id} to={`/areas/${l.id}`} className="rounded-md bg-accent px-2 py-0.5 text-xs text-primary hover:underline">
+                  {l.name}
+                </Link>
+              ))}
+              {myCandidates > 0 && (
+                <Link to="/candidates" className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-900 ring-1 ring-amber-200 hover:underline">
+                  저평가 후보 노트 {myCandidates}개
+                </Link>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -307,6 +346,7 @@ export function ApartmentDetailPage() {
       <ApartmentFormDialog open={editing} onClose={() => setEditing(false)} apartment={apt} />
       <PriceEditDialog record={editRec} onClose={() => setEditRec(null)} />
       <UnitEditDialog unit={editUnit} onClose={() => setEditUnit(null)} />
+      <CandidateFormDialog open={candidateOpen} onClose={() => setCandidateOpen(false)} defaultTarget={{ apartmentId: apt.id, unitId: unit?.id ?? null }} />
       <ConfirmDialog
         open={!!delRec}
         onClose={() => setDelRec(null)}

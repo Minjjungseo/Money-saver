@@ -42,6 +42,10 @@ export interface Apartment {
   /** 지역 대표(랜드마크) 단지 여부 */
   isLandmark: boolean
   memo: string | null
+  /** 입지 메모: 교통 / 학군 / 생활 인프라 (직접 확인한 내용) */
+  transitMemo: string | null
+  schoolMemo: string | null
+  infraMemo: string | null
   isSample: boolean
   createdAt: string
   updatedAt: string
@@ -96,9 +100,58 @@ export interface StudyNote {
   updatedAt: string
 }
 
+/**
+ * 생활권: 행정구역과 별개로 사용자가 직접 묶는 단지 그룹 (예: "판교 생활권", "목동 학군지")
+ * 한 단지가 여러 생활권에 들어갈 수 있다.
+ */
+export interface LivingArea {
+  id: ID
+  name: string
+  description: string | null
+  apartmentIds: ID[]
+  /** 생활권 대표 단지 (apartmentIds 중 하나) */
+  representativeId: ID | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type CandidateStatus = 'studying' | 'verified' | 'dropped'
+
+/** 비교 대상: 단지 + 비교할 면적 */
+export interface UnitRef {
+  apartmentId: ID
+  unitId: ID | null
+}
+
+/**
+ * 저평가 후보 탐색 노트.
+ * 앱은 가격 차이 같은 사실만 계산하고, '저평가'라는 판단은 사용자가 쓴 가설로만 남긴다.
+ */
+export interface Candidate {
+  id: ID
+  target: UnitRef
+  comparisons: UnitRef[]
+  /** 내가 세운 저평가 가설 */
+  hypothesis: string
+  /** 확인할 근거 (한 줄에 하나) */
+  evidenceToCheck: string
+  /** 비교 대상과의 차이 (직접 기록) */
+  locationDiff: string | null
+  ageDiff: string | null
+  areaDiff: string | null
+  volumeDiff: string | null
+  status: CandidateStatus
+  /** 확인 결과·결론 */
+  conclusion: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Settings {
   weeklyFocusRegionIds: ID[]
   todayMemo: { date: ISODate; text: string } | null
+  /** 랜드마크 비교 목록 (지도·목록·상세에서 추가) */
+  compare: UnitRef[]
 }
 
 export interface AppData {
@@ -108,9 +161,12 @@ export interface AppData {
   units: ApartmentUnit[]
   prices: PriceRecord[]
   notes: StudyNote[]
+  livingAreas: LivingArea[]
+  candidates: Candidate[]
   settings: Settings
 }
 
+export const CANDIDATE_STATUS_LABEL: Record<CandidateStatus, string> = { studying: '검토 중', verified: '근거 확인됨', dropped: '보류·기각' }
 export const PRICE_KIND_LABEL: Record<PriceKind, string> = { sale: '매매', jeonse: '전세' }
 export const PRICE_TYPE_LABEL: Record<PriceType, string> = { actual: '실거래가', asking: '호가', other: '기타' }
 export const REGION_GROUP_LABEL: Record<RegionGroup, string> = { capital: '수도권', metro: '광역시', local: '중소도시' }

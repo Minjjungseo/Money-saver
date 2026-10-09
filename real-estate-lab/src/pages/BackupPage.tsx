@@ -148,7 +148,7 @@ export function BackupPage() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => applyPending('merge')} disabled={pending.stats.added.prices + pending.stats.added.apartments === 0}>
+                <Button onClick={() => applyPending('merge')} disabled={Object.values(pending.stats.added).every((n) => n === 0)}>
                   {pending.kind === 'json' ? '병합해서 가져오기 (권장)' : '가져오기'}
                 </Button>
                 {pending.kind === 'json' && (

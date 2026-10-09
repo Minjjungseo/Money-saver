@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Star } from 'lucide-react'
+import { AlertTriangle, GitCompareArrows, Star } from 'lucide-react'
 import { Table, Td, Th } from './ui/table'
 import { ChangeText, PriceTypeBadge, SampleBadge } from './bits'
 import { RATIO_DATE_GAP_WARN_DAYS, basisDate } from '@/lib/calc'
@@ -8,6 +8,9 @@ import { formatEok, formatKoreanWon, formatPct } from '@/lib/money'
 import { apartmentUrl } from '@/lib/routes'
 import { regionPath, unitLabel, type AptSummary } from '@/lib/selectors'
 import type { AppData, PriceRecord } from '@/store/schema'
+import { addToCompare, MAX_COMPARE, removeFromCompare } from '@/store/ops'
+import { update } from '@/store/store'
+import { cn } from '@/lib/utils'
 
 export function ApartmentList({ data, items }: { data: AppData; items: AptSummary[] }) {
   return (
@@ -24,6 +27,9 @@ export function ApartmentList({ data, items }: { data: AppData; items: AptSummar
               <Th className="text-right">전세가율</Th>
               <Th className="text-right">매매 변동</Th>
               <Th className="text-right">최근 조사일</Th>
+              <Th className="w-10 pr-2">
+                <span className="sr-only">비교</span>
+              </Th>
             </tr>
           </thead>
           <tbody>
@@ -37,7 +43,10 @@ export function ApartmentList({ data, items }: { data: AppData; items: AptSummar
                     </Link>
                     <SampleBadge show={s.apartment.isSample} />
                   </div>
-                  <div className="text-xs text-muted-foreground">{regionPath(data, s.apartment.regionId)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {regionPath(data, s.apartment.regionId)}
+                    {facts(s) && ` · ${facts(s)}`}
+                  </div>
                 </Td>
                 <Td className="text-xs text-muted-foreground">{s.unit ? unitLabel(s.unit) : '면적 없음'}</Td>
                 <Td className="text-right">
@@ -53,6 +62,9 @@ export function ApartmentList({ data, items }: { data: AppData; items: AptSummar
                   <ChangeText change={s.saleChange} showAmount={false} />
                 </Td>
                 <Td className="text-right text-xs text-muted-foreground">{formatDate(s.lastSurvey)}</Td>
+                <Td className="pr-2">
+                  <CompareToggle data={data} apartmentId={s.apartment.id} />
+                </Td>
               </tr>
             ))}
           </tbody>
@@ -72,9 +84,11 @@ export function ApartmentList({ data, items }: { data: AppData; items: AptSummar
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {regionPath(data, s.apartment.regionId)} · {s.unit ? unitLabel(s.unit) : '면적 없음'}
+                    {facts(s) && ` · ${facts(s)}`}
                   </div>
                 </div>
                 <SampleBadge show={s.apartment.isSample} />
+                <CompareToggle data={data} apartmentId={s.apartment.id} />
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                 <div>
@@ -125,5 +139,36 @@ function RatioCell({ s }: { s: AptSummary }) {
       {formatPct(s.ratio, 1, false)}
       {warn && <AlertTriangle className="size-3.5 text-orange-500" aria-label="기준일 차이 큼" />}
     </span>
+  )
+}
+
+function facts(s: AptSummary): string {
+  const parts: string[] = []
+  if (s.apartment.builtYear) parts.push(`${s.apartment.builtYear}년`)
+  if (s.apartment.households) parts.push(`${s.apartment.households.toLocaleString('ko-KR')}세대`)
+  return parts.join(' · ')
+}
+
+/** 비교 목록 추가·제거 버튼 */
+export function CompareToggle({ data, apartmentId }: { data: AppData; apartmentId: string }) {
+  const inList = data.settings.compare.some((x) => x.apartmentId === apartmentId)
+  const full = data.settings.compare.length >= MAX_COMPARE
+  return (
+    <button
+      className={cn(
+        'rounded-md p-1.5 hover:bg-muted disabled:opacity-40',
+        inList ? 'text-primary' : 'text-muted-foreground',
+      )}
+      disabled={!inList && full}
+      title={inList ? '비교 목록에서 빼기' : full ? `비교는 최대 ${MAX_COMPARE}개` : '비교 목록에 추가'}
+      aria-label={inList ? '비교 목록에서 빼기' : '비교 목록에 추가'}
+      aria-pressed={inList}
+      onClick={(e) => {
+        e.preventDefault()
+        update((d) => (inList ? removeFromCompare(d, apartmentId) : addToCompare(d, { apartmentId, unitId: null })))
+      }}
+    >
+      <GitCompareArrows className="size-4" />
+    </button>
   )
 }

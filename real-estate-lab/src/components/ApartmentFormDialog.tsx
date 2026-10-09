@@ -55,6 +55,9 @@ export function ApartmentFormDialog({ open, onClose, apartment, defaultRegionId,
       households: toOptionalInt(f.households),
       isLandmark: f.isLandmark,
       memo: f.memo.trim() || null,
+      transitMemo: f.transitMemo.trim() || null,
+      schoolMemo: f.schoolMemo.trim() || null,
+      infraMemo: f.infraMemo.trim() || null,
     }
     let saved: Apartment
     if (apartment) {
@@ -111,6 +114,18 @@ export function ApartmentFormDialog({ open, onClose, apartment, defaultRegionId,
           <input type="checkbox" checked={f.isLandmark} onChange={(e) => set('isLandmark')(e.target.checked)} className="size-4 accent-primary" />
           지역 대표(랜드마크) 단지
         </label>
+        <div className="space-y-2 rounded-lg border p-3">
+          <div className="text-xs font-semibold">입지 메모 (직접 확인한 내용)</div>
+          <Field label="교통">
+            <Input value={f.transitMemo} onChange={(e) => set('transitMemo')(e.target.value)} placeholder="예: 2호선 OO역 도보 7분, 광역버스" />
+          </Field>
+          <Field label="학군">
+            <Input value={f.schoolMemo} onChange={(e) => set('schoolMemo')(e.target.value)} placeholder="예: OO초 배정, 학원가 도보 10분" />
+          </Field>
+          <Field label="생활 인프라">
+            <Input value={f.infraMemo} onChange={(e) => set('infraMemo')(e.target.value)} placeholder="예: 대형마트, 병원, 공원" />
+          </Field>
+        </div>
         <Field label="공부 메모">
           <Textarea value={f.memo} onChange={(e) => set('memo')(e.target.value)} placeholder="입지, 학군, 교통, 비교 포인트 등" />
         </Field>
@@ -128,6 +143,9 @@ function init(a?: Apartment, regionId?: string) {
     households: a?.households?.toString() ?? '',
     isLandmark: a?.isLandmark ?? true,
     memo: a?.memo ?? '',
+    transitMemo: a?.transitMemo ?? '',
+    schoolMemo: a?.schoolMemo ?? '',
+    infraMemo: a?.infraMemo ?? '',
   }
 }
 

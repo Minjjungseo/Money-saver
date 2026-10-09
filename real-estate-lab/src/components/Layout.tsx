@@ -1,18 +1,30 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Building2, DatabaseBackup, Home, MapPinned, PenLine } from 'lucide-react'
+import { Building2, DatabaseBackup, GitCompareArrows, Group, Home, Lightbulb, MapPinned, Menu, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hasSample } from '@/store/ops'
 import { loadWarning, useData } from '@/store/store'
 import { Toaster } from './toast'
 import { SampleBadge, Warn } from './bits'
 
-const NAV = [
+export const NAV = [
   { to: '/', label: '홈', icon: Home, end: true },
   { to: '/regions', label: '지역', icon: MapPinned },
   { to: '/apartments', label: '단지', icon: Building2 },
+  { to: '/compare', label: '가격 비교', icon: GitCompareArrows },
+  { to: '/areas', label: '생활권', icon: Group },
+  { to: '/candidates', label: '후보 노트', icon: Lightbulb },
   { to: '/input', label: '시세 입력', icon: PenLine },
   { to: '/backup', label: '백업', icon: DatabaseBackup },
+]
+
+/** 모바일 하단 탭 (나머지는 '더보기') */
+const MOBILE_NAV = [
+  { to: '/', label: '홈', icon: Home, end: true },
+  { to: '/apartments', label: '단지', icon: Building2 },
+  { to: '/compare', label: '비교', icon: GitCompareArrows },
+  { to: '/input', label: '입력', icon: PenLine },
+  { to: '/more', label: '더보기', icon: Menu },
 ]
 
 export function Layout() {
@@ -67,7 +79,7 @@ export function Layout() {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {NAV.map((n) => (
+        {MOBILE_NAV.map((n) => (
           <NavLink
             key={n.to}
             to={n.to}

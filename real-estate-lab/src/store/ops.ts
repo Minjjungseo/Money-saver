@@ -3,7 +3,9 @@
  */
 import { priceDedupeKey } from '@/lib/calc'
 import { newId, nowStamp } from '@/lib/id'
-import type { Apartment, ApartmentUnit, AppData, ID, ISODate, PriceKind, PriceRecord, PriceType, Region, RegionType } from './schema'
+import type {
+  Apartment, ApartmentUnit, AppData, Candidate, ID, ISODate, LivingArea, PriceKind, PriceRecord, PriceType, Region, RegionType, UnitRef,
+} from './schema'
 
 // ---------- 지역 ----------
 
@@ -37,11 +39,22 @@ export function ensureRegionPath(d: AppData, sidoId: ID, parts: string[]): { dat
 
 // ---------- 단지 ----------
 
-export type ApartmentInput = Pick<Apartment, 'regionId' | 'name' | 'address' | 'builtYear' | 'households' | 'isLandmark' | 'memo'>
+export type ApartmentInput = Pick<Apartment, 'regionId' | 'name' | 'address' | 'builtYear' | 'households' | 'isLandmark' | 'memo'> &
+  Partial<Pick<Apartment, 'transitMemo' | 'schoolMemo' | 'infraMemo'>>
 
 export function addApartment(d: AppData, input: ApartmentInput, isSample = false): { data: AppData; apartment: Apartment } {
   const t = nowStamp()
-  const apartment: Apartment = { id: newId('apt'), ...input, name: input.name.trim(), isSample, createdAt: t, updatedAt: t }
+  const apartment: Apartment = {
+    id: newId('apt'),
+    transitMemo: null,
+    schoolMemo: null,
+    infraMemo: null,
+    ...input,
+    name: input.name.trim(),
+    isSample,
+    createdAt: t,
+    updatedAt: t,
+  }
   return { data: { ...d, apartments: [...d.apartments, apartment] }, apartment }
 }
 
@@ -52,7 +65,10 @@ export function updateApartment(d: AppData, id: ID, patch: Partial<ApartmentInpu
   }
 }
 
-/** 단지와 그 단지의 모든 면적·가격 기록을 함께 삭제 */
+/**
+ * 단지와 그 단지의 모든 면적·가격 기록을 함께 삭제.
+ * 생활권·비교 목록에서는 빠지고, 이 단지가 대상인 후보 노트는 삭제, 비교 대상으로만 쓰인 노트에서는 빠진다.
+ */
 export function deleteApartment(d: AppData, id: ID): AppData {
   const unitIds = new Set(d.units.filter((u) => u.apartmentId === id).map((u) => u.id))
   return {
@@ -61,6 +77,15 @@ export function deleteApartment(d: AppData, id: ID): AppData {
     units: d.units.filter((u) => !unitIds.has(u.id)),
     prices: d.prices.filter((p) => !unitIds.has(p.unitId)),
     notes: d.notes.map((n) => (n.apartmentId === id ? { ...n, apartmentId: null } : n)),
+    livingAreas: d.livingAreas.map((l) =>
+      l.apartmentIds.includes(id)
+        ? { ...l, apartmentIds: l.apartmentIds.filter((x) => x !== id), representativeId: l.representativeId === id ? null : l.representativeId }
+        : l,
+    ),
+    candidates: d.candidates
+      .filter((c) => c.target.apartmentId !== id)
+      .map((c) => ({ ...c, comparisons: c.comparisons.filter((x) => x.apartmentId !== id) })),
+    settings: { ...d.settings, compare: d.settings.compare.filter((x) => x.apartmentId !== id) },
   }
 }
 
@@ -217,4 +242,72 @@ export function setTodayMemo(d: AppData, date: ISODate, text: string): AppData {
 
 export function setWeeklyFocus(d: AppData, regionIds: ID[]): AppData {
   return { ...d, settings: { ...d.settings, weeklyFocusRegionIds: regionIds } }
+}
+
+// ---------- 비교 목록 ----------
+
+export const MAX_COMPARE = 8
+
+export function addToCompare(d: AppData, ref: UnitRef): AppData {
+  if (d.settings.compare.some((x) => x.apartmentId === ref.apartmentId)) return d
+  if (d.settings.compare.length >= MAX_COMPARE) return d
+  return { ...d, settings: { ...d.settings, compare: [...d.settings.compare, ref] } }
+}
+
+export function removeFromCompare(d: AppData, apartmentId: ID): AppData {
+  return { ...d, settings: { ...d.settings, compare: d.settings.compare.filter((x) => x.apartmentId !== apartmentId) } }
+}
+
+export function setCompareUnit(d: AppData, apartmentId: ID, unitId: ID | null): AppData {
+  return { ...d, settings: { ...d.settings, compare: d.settings.compare.map((x) => (x.apartmentId === apartmentId ? { ...x, unitId } : x)) } }
+}
+
+export function clearCompare(d: AppData): AppData {
+  return { ...d, settings: { ...d.settings, compare: [] } }
+}
+
+// ---------- 생활권 ----------
+
+export type LivingAreaInput = Pick<LivingArea, 'name' | 'description' | 'apartmentIds' | 'representativeId'>
+
+function cleanArea(input: LivingAreaInput): LivingAreaInput {
+  const ids = [...new Set(input.apartmentIds)]
+  return {
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    apartmentIds: ids,
+    representativeId: input.representativeId && ids.includes(input.representativeId) ? input.representativeId : null,
+  }
+}
+
+export function addLivingArea(d: AppData, input: LivingAreaInput): { data: AppData; area: LivingArea } {
+  const t = nowStamp()
+  const area: LivingArea = { id: newId('area'), ...cleanArea(input), createdAt: t, updatedAt: t }
+  return { data: { ...d, livingAreas: [...d.livingAreas, area] }, area }
+}
+
+export function updateLivingArea(d: AppData, id: ID, input: LivingAreaInput): AppData {
+  return { ...d, livingAreas: d.livingAreas.map((l) => (l.id === id ? { ...l, ...cleanArea(input), updatedAt: nowStamp() } : l)) }
+}
+
+export function deleteLivingArea(d: AppData, id: ID): AppData {
+  return { ...d, livingAreas: d.livingAreas.filter((l) => l.id !== id) }
+}
+
+// ---------- 저평가 후보 노트 ----------
+
+export type CandidateInput = Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'>
+
+export function addCandidate(d: AppData, input: CandidateInput): { data: AppData; candidate: Candidate } {
+  const t = nowStamp()
+  const candidate: Candidate = { id: newId('cand'), ...input, createdAt: t, updatedAt: t }
+  return { data: { ...d, candidates: [...d.candidates, candidate] }, candidate }
+}
+
+export function updateCandidate(d: AppData, id: ID, input: Partial<CandidateInput>): AppData {
+  return { ...d, candidates: d.candidates.map((c) => (c.id === id ? { ...c, ...input, updatedAt: nowStamp() } : c)) }
+}
+
+export function deleteCandidate(d: AppData, id: ID): AppData {
+  return { ...d, candidates: d.candidates.filter((c) => c.id !== id) }
 }

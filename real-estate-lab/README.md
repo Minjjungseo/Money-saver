@@ -69,6 +69,29 @@
 | 시세 입력 | 매매·전세를 각각 다른 거래일로 입력, 전세가율·직전 대비 변동 자동 계산, 중복 방지 |
 | 백업 | JSON 전체 백업/복원(병합·전체 교체), 가격 CSV 내보내기/가져오기(미리보기), 예시 데이터 넣기/지우기 |
 
+## 2단계 화면
+
+| 화면 | 내용 |
+|---|---|
+| 가격 비교 | 비교 목록(최대 8개) 단지의 매매·전세를 한 그래프에. 1년/3년/5년/전체, 실거래가·호가·기타 선택, 단지별 최근·최고·최저·최고점 대비 |
+| 생활권 | 행정구역과 별개로 단지를 직접 묶기, 대표 단지·가격대·중앙값, 생활권 순위, 3/5/10억 가격 구간 그룹 |
+| 후보 노트 | 저평가 후보 저장, 비교 단지와의 가격·연식·세대수 차이(사실만 계산), 가설·확인할 근거·입지/연식/면적/거래량 차이 직접 기록 |
+| 단지 목록 | 비슷한 조건 필터(연식·세대수·전용면적·매매가 범위·생활권), 비교 목록 추가 버튼 |
+| 단지 상세 | 교통·학군·생활 인프라 메모, 소속 생활권, [비교에 추가], [저평가 후보로 저장] |
+
+비교 그래프 규칙
+- 점 하나 = 실제 기록 하나. 기록이 없는 시점의 가격은 만들지 않습니다.
+- 같은 시계열 기록 사이는 선으로 잇되, 6개월 넘게 비면 선을 끊습니다.
+- 색 = 단지(목록 순서로 고정), 선 모양 = 가격 유형(실선 실거래가 / 긴 점선 호가 / 짧은 점선 기타), 굵은 선·채운 점 = 매매, 가는 선·빈 점 = 전세.
+- 요약표의 수치는 선택한 기간 안의 기록만으로, 시계열(종류·유형)마다 따로 계산합니다.
+
+저평가 후보 노트 규칙
+- 앱은 '저평가'를 판정하지 않습니다. 가격 차이, 연식·세대수 차이, 그리고 주의사항(가격 유형 불일치, 기준일 차이, 면적 차이·전용면적 미확인, 과거자료)만 보여줍니다.
+- 같은 가격 유형끼리 맞춰 비교하고(실거래가 → 호가 → 기타 순), 맞출 수 없으면 경고합니다.
+
+## 3단계 예정: 지도
+- 실제 지도 API를 연결한 뒤 제공합니다. 위치를 모르는 단지를 임의 좌표로 지도처럼 보이게 하지 않습니다.
+
 ## 데이터 원칙
 
 - 금액은 **원 단위 정수**로 저장하고 화면에서만 억 원으로 보여줍니다. (`12.35` → `1,235,000,000원`)
@@ -91,7 +114,9 @@
 | Apartment | id, regionId, name, address, builtYear, households, isLandmark, memo |
 | ApartmentUnit | id, apartmentId, exclusiveArea(㎡, 모르면 null), pyeong(평형), label(84A 등) |
 | PriceRecord | id, unitId, kind(매매/전세), amountWon, dealDate, surveyDate, priceType, sourceUrl, memo, entryId, legacy |
-| StudyNote | id, date, regionId, apartmentId, title, content, source (2·3단계에서 화면 연결) |
+| StudyNote | id, date, regionId, apartmentId, title, content, source (화면 연결 예정) |
+| LivingArea | id, name, description, apartmentIds, representativeId |
+| Candidate | id, target(단지·면적), comparisons, hypothesis, evidenceToCheck, location/age/area/volumeDiff, status, conclusion |
 
 각 엔터티는 id로만 서로를 참조하는 평평한 구조라서 그대로 DB 테이블로 옮길 수 있습니다.
 

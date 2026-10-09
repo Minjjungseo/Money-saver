@@ -13,7 +13,9 @@ export function emptyData(): AppData {
     units: [],
     prices: [],
     notes: [],
-    settings: { weeklyFocusRegionIds: [], todayMemo: null },
+    livingAreas: [],
+    candidates: [],
+    settings: { weeklyFocusRegionIds: [], todayMemo: null, compare: [] },
   }
 }
 
@@ -29,13 +31,18 @@ export function normalize(raw: Partial<AppData>): AppData {
   return {
     schemaVersion: SCHEMA_VERSION,
     regions,
-    apartments: Array.isArray(raw.apartments) ? raw.apartments : [],
+    apartments: Array.isArray(raw.apartments)
+      ? raw.apartments.map((a) => ({ ...a, transitMemo: a.transitMemo ?? null, schoolMemo: a.schoolMemo ?? null, infraMemo: a.infraMemo ?? null }))
+      : [],
     units: Array.isArray(raw.units) ? raw.units.map((u) => ({ ...u, pyeong: u.pyeong ?? null })) : [],
     prices: Array.isArray(raw.prices) ? raw.prices : [],
     notes: Array.isArray(raw.notes) ? raw.notes : [],
+    livingAreas: Array.isArray(raw.livingAreas) ? raw.livingAreas : [],
+    candidates: Array.isArray(raw.candidates) ? raw.candidates : [],
     settings: {
       weeklyFocusRegionIds: raw.settings?.weeklyFocusRegionIds ?? [],
       todayMemo: raw.settings?.todayMemo ?? null,
+      compare: Array.isArray(raw.settings?.compare) ? raw.settings.compare : [],
     },
   }
 }
