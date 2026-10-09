@@ -89,7 +89,7 @@ describe('예시 데이터', () => {
       sale: { amountWon: 3_000_000_000, dealDate: TODAY }, jeonse: null,
     }).data
     const a = addApartment(d, { regionId: '서울/마포구', name: '내단지', address: null, builtYear: null, households: null, isLandmark: true, memo: null })
-    d = findOrCreateUnit(a.data, a.apartment.id, 59, null).data
+    d = findOrCreateUnit(a.data, a.apartment.id, { area: 59, label: null }).data
     const cleaned = removeSample(d)
     expect(cleaned.prices).toHaveLength(1)
     expect(cleaned.units.map((u) => u.id)).toContain(sampleUnit.id)

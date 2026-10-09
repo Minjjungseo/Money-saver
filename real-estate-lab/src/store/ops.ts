@@ -17,6 +17,24 @@ export function addRegion(d: AppData, parentId: ID, name: string, type: RegionTy
   return { data: { ...d, regions: [...d.regions, region] }, region }
 }
 
+/**
+ * "경기" + ["성남시", "분당구"] 처럼 경로로 지역을 찾고, 없는 단계는 만든다.
+ * 첫 단계는 시·군·구, 그 아래는 일반구.
+ */
+export function ensureRegionPath(d: AppData, sidoId: ID, parts: string[]): { data: AppData; regionId: ID; created: number } {
+  let data = d
+  let regionId = sidoId
+  let created = 0
+  parts.forEach((name, i) => {
+    const before = data.regions.length
+    const res = addRegion(data, regionId, name, i === 0 ? 'sigungu' : 'gu')
+    data = res.data
+    regionId = res.region.id
+    created += data.regions.length - before
+  })
+  return { data, regionId, created }
+}
+
 // ---------- 단지 ----------
 
 export type ApartmentInput = Pick<Apartment, 'regionId' | 'name' | 'address' | 'builtYear' | 'households' | 'isLandmark' | 'memo'>
@@ -56,28 +74,47 @@ function sameLabel(a: string | null, b: string | null): boolean {
   return (a ?? '').trim().toUpperCase() === (b ?? '').trim().toUpperCase()
 }
 
-export function findUnit(d: AppData, apartmentId: ID, area: number, label: string | null): ApartmentUnit | undefined {
-  const a = normalizeArea(area)
-  return d.units.find((u) => u.apartmentId === apartmentId && u.exclusiveArea === a && sameLabel(u.label, label))
+/**
+ * 면적 지정 방법
+ * - 전용면적(area)이 있으면 전용면적 + 타입으로 찾는다.
+ * - 전용면적이 없고 평형만 있으면, 전용면적 미확인 상태의 같은 평형 + 타입으로 찾는다.
+ */
+export interface UnitSpec {
+  area: number | null
+  pyeong?: number | null
+  label: string | null
 }
 
-export function findOrCreateUnit(
-  d: AppData,
-  apartmentId: ID,
-  area: number,
-  label: string | null,
-  isSample = false,
-): { data: AppData; unit: ApartmentUnit } {
-  const found = findUnit(d, apartmentId, area, label)
+export function findUnit(d: AppData, apartmentId: ID, spec: UnitSpec): ApartmentUnit | undefined {
+  const area = spec.area == null ? null : normalizeArea(spec.area)
+  const pyeong = spec.pyeong ?? null
+  return d.units.find(
+    (u) =>
+      u.apartmentId === apartmentId &&
+      sameLabel(u.label, spec.label) &&
+      (area != null ? u.exclusiveArea === area : u.exclusiveArea == null && (u.pyeong ?? null) === pyeong),
+  )
+}
+
+export function findOrCreateUnit(d: AppData, apartmentId: ID, spec: UnitSpec, isSample = false): { data: AppData; unit: ApartmentUnit } {
+  const found = findUnit(d, apartmentId, spec)
   if (found) return { data: d, unit: found }
   const unit: ApartmentUnit = {
     id: newId('unit'),
     apartmentId,
-    exclusiveArea: normalizeArea(area),
-    label: label?.trim() ? label.trim() : null,
+    exclusiveArea: spec.area == null ? null : normalizeArea(spec.area),
+    pyeong: spec.pyeong ?? null,
+    label: spec.label?.trim() ? spec.label.trim() : null,
     isSample,
   }
   return { data: { ...d, units: [...d.units, unit] }, unit }
+}
+
+/** 면적 정보 수정 (예: 평형만 있던 면적에 확인한 전용면적 입력) */
+export function updateUnit(d: AppData, id: ID, patch: Partial<Pick<ApartmentUnit, 'exclusiveArea' | 'pyeong' | 'label'>>): AppData {
+  const next = { ...patch }
+  if (next.exclusiveArea != null) next.exclusiveArea = normalizeArea(next.exclusiveArea)
+  return { ...d, units: d.units.map((u) => (u.id === id ? { ...u, ...next } : u)) }
 }
 
 // ---------- 가격 ----------

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { ApartmentFormDialog } from '@/components/ApartmentFormDialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PriceEditDialog } from '@/components/PriceEditDialog'
+import { UnitEditDialog } from '@/components/UnitEditDialog'
 import { PriceHistoryChart, RatioChart } from '@/components/PriceCharts'
 import { ChangeText, EmptyState, PriceTypeBadge, SampleBadge, SourceLink, Warn } from '@/components/bits'
 import { toast } from '@/components/toast'
@@ -18,11 +19,11 @@ import {
 import { formatDate } from '@/lib/date'
 import { formatKoreanWon, formatPct } from '@/lib/money'
 import { inputUrl, regionUrl } from '@/lib/routes'
-import { regionPath, unitLabel, unitsOf } from '@/lib/selectors'
+import { regionPath, unitChip, unitLabel, unitsOf } from '@/lib/selectors'
 import { cn } from '@/lib/utils'
 import { deleteApartment, deletePrice, updateApartment } from '@/store/ops'
 import { update, useData } from '@/store/store'
-import { PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
+import { PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type ApartmentUnit, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
 
 const KINDS: PriceKind[] = ['sale', 'jeonse']
 const TYPES: PriceType[] = ['actual', 'asking', 'other']
@@ -38,6 +39,7 @@ export function ApartmentDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [editRec, setEditRec] = useState<PriceRecord | null>(null)
   const [delRec, setDelRec] = useState<PriceRecord | null>(null)
+  const [editUnit, setEditUnit] = useState<ApartmentUnit | null>(null)
 
   const unit = units.find((u) => u.id === unitPick) ?? units.find((u) => data.prices.some((p) => p.unitId === u.id)) ?? units[0] ?? null
   const prices = useMemo(() => (unit ? data.prices.filter((p) => p.unitId === unit.id) : []), [data.prices, unit])
@@ -114,11 +116,22 @@ export function ApartmentDetailPage() {
                 onClick={() => setUnitPick(u.id)}
                 className={cn('rounded-full border px-3 py-1 text-sm', unit?.id === u.id ? 'border-primary bg-primary text-white' : 'bg-card hover:border-primary')}
               >
-                {u.exclusiveArea}㎡{u.label ? ` ${u.label}` : ''}
+                {unitChip(u)}
               </button>
             ))}
+            {unit && (
+              <Button size="sm" variant="ghost" onClick={() => setEditUnit(unit)}>
+                <Pencil />
+                면적 정보
+              </Button>
+            )}
             <span className="ml-1 text-xs text-muted-foreground">같은 단지·같은 면적끼리만 비교합니다 · 대표 가격은 최신 실거래가 우선</span>
           </div>
+          {unit && unit.exclusiveArea == null && (
+            <div className="mb-4">
+              <Warn>전용면적이 확인되지 않은 면적입니다(원본: {unitChip(unit)}). [면적 정보]에서 확인한 전용면적을 입력해 두면 새 실거래가와 같은 면적으로 비교할 수 있어요.</Warn>
+            </div>
+          )}
 
           {/* 현재 요약 */}
           <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -293,6 +306,7 @@ export function ApartmentDetailPage() {
 
       <ApartmentFormDialog open={editing} onClose={() => setEditing(false)} apartment={apt} />
       <PriceEditDialog record={editRec} onClose={() => setEditRec(null)} />
+      <UnitEditDialog unit={editUnit} onClose={() => setEditUnit(null)} />
       <ConfirmDialog
         open={!!delRec}
         onClose={() => setDelRec(null)}

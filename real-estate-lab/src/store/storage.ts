@@ -30,7 +30,7 @@ export function normalize(raw: Partial<AppData>): AppData {
     schemaVersion: SCHEMA_VERSION,
     regions,
     apartments: Array.isArray(raw.apartments) ? raw.apartments : [],
-    units: Array.isArray(raw.units) ? raw.units : [],
+    units: Array.isArray(raw.units) ? raw.units.map((u) => ({ ...u, pyeong: u.pyeong ?? null })) : [],
     prices: Array.isArray(raw.prices) ? raw.prices : [],
     notes: Array.isArray(raw.notes) ? raw.notes : [],
     settings: {

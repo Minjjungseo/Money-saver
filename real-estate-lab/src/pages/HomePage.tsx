@@ -4,16 +4,19 @@ import { ArrowDownRight, ArrowUpRight, BookOpen, FlaskConical, PenLine, Plus, X 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, Textarea } from '@/components/ui/input'
-import { ChangeText, EmptyState, PageHeader, PriceTypeBadge, SampleBadge, SourceLink, Stat } from '@/components/bits'
+import { ChangeText, EmptyState, PageHeader, PriceTypeBadge, SampleBadge, SourceLink, Stat, Warn } from '@/components/bits'
 import { toast } from '@/components/toast'
 import { addSampleData } from '@/data/sample'
-import { formatDate, todayISO } from '@/lib/date'
+import { daysBetween, formatDate, todayISO } from '@/lib/date'
 import { formatKoreanWon } from '@/lib/money'
 import { apartmentUrl, regionUrl } from '@/lib/routes'
 import { describePrice, lastUpdated, recentPrices, regionPath, summarize, unitLabel } from '@/lib/selectors'
 import { setTodayMemo, setWeeklyFocus } from '@/store/ops'
 import { update, useData } from '@/store/store'
 import { PRICE_KIND_LABEL } from '@/store/schema'
+
+/** 마지막 조사일이 이보다 오래되면 경고 */
+const STALE_DAYS = 90
 
 export function HomePage() {
   const data = useData()
@@ -50,6 +53,14 @@ export function HomePage() {
           <Stat label="가격 기록" value={data.prices.length ? `${data.prices.length}건` : '데이터 없음'} />
         </CardContent>
       </Card>
+
+      {updated && daysBetween(updated, today) > STALE_DAYS && (
+        <div className="mb-4">
+          <Warn>
+            가장 최근 조사일이 {formatDate(updated)}로 {daysBetween(updated, today).toLocaleString('ko-KR')}일 전입니다. 아래 상승·하락은 그 시점 기록끼리의 비교이며 현재 시장 상황이 아닙니다.
+          </Warn>
+        </div>
+      )}
 
       {data.apartments.length === 0 && (
         <div className="mb-4">

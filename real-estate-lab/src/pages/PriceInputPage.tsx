@@ -12,7 +12,7 @@ import { RATIO_DATE_GAP_WARN_DAYS, diff, jeonseRatio, latestOf } from '@/lib/cal
 import { daysBetween, formatDate, todayISO } from '@/lib/date'
 import { formatKoreanWon, formatPct, parseEok } from '@/lib/money'
 import { apartmentUrl } from '@/lib/routes'
-import { descendantIds, unitsOf } from '@/lib/selectors'
+import { descendantIds, unitChip, unitsOf } from '@/lib/selectors'
 import { checkArea, checkDate, checkUrl, type Errors } from '@/lib/validate'
 import { cn } from '@/lib/utils'
 import { addPriceEntry, findOrCreateUnit, findUnit, type PricePart } from '@/store/ops'
@@ -54,7 +54,7 @@ export function PriceInputPage() {
   const unit =
     unitChoice === NEW_UNIT
       ? apt && !checkArea(area)
-        ? (findUnit(data, apt.id, Number(area), areaLabel || null) ?? null)
+        ? (findUnit(data, apt.id, { area: Number(area), label: areaLabel || null }) ?? null)
         : null
       : (units.find((u) => u.id === unitChoice) ?? null)
 
@@ -98,7 +98,7 @@ export function PriceInputPage() {
     update((d) => {
       const u =
         unitChoice === NEW_UNIT
-          ? findOrCreateUnit(d, apt.id, Number(area), areaLabel || null)
+          ? findOrCreateUnit(d, apt.id, { area: Number(area), label: areaLabel || null })
           : { data: d, unit: d.units.find((x) => x.id === unitChoice)! }
       const r = addPriceEntry(u.data, {
         unitId: u.unit.id,
@@ -174,7 +174,7 @@ export function PriceInputPage() {
                     <Select value={unitChoice} onChange={(e) => setUnitSel(e.target.value)}>
                       {units.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.exclusiveArea}㎡{u.label ? ` (${u.label})` : ''}
+                          {unitChip(u)}
                         </option>
                       ))}
                       <option value={NEW_UNIT}>+ 새 면적 입력</option>
@@ -275,7 +275,7 @@ export function PriceInputPage() {
                   </span>
                 ) : '—'}
               </Row>
-              <Row label="면적">{unit ? `${unit.exclusiveArea}㎡${unit.label ? ` ${unit.label}` : ''}` : unitChoice === NEW_UNIT && area ? `${area}㎡ (새 면적)` : '—'}</Row>
+              <Row label="면적">{unit ? unitChip(unit) : unitChoice === NEW_UNIT && area ? `${area}㎡ (새 면적)` : '—'}</Row>
               <Row label="유형">{PRICE_TYPE_LABEL[priceType]}</Row>
               {(['sale', 'jeonse'] as const).map((k) => {
                 const won = k === 'sale' ? saleWon : jeonseWon

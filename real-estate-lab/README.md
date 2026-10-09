@@ -39,6 +39,25 @@
 - 그래서 **[백업] 화면에서 JSON 백업을 정기적으로 내려받아 두세요.** 같은 파일로 언제든 복원할 수 있습니다.
 - 가져오기·삭제 직전 상태 1개는 [백업 → 직전 상태로 되돌리기]로 복구할 수 있습니다.
 
+## 기존 Google Sheets 자료 가져오기
+
+1. Google Sheets(2026 공부용 사본)에서 **파일 → 다운로드 → Microsoft Excel(.xlsx)**.
+2. 앱의 **[백업] → 기존 Google Sheets(.xlsx) 가져오기**에서 파일 선택.
+3. 미리보기(새 단지·가격 수, 확인이 필요한 지역 매핑)를 확인하고 **가져오기**.
+
+| 원본 탭 | 가져오는 내용 |
+|---|---|
+| 시세트래킹 | 단지별·조사일별 매매·전세 (구역 제목 → 시·도, B열 → 시·군·구, C열 → 단지명·평형) |
+| 전국 랜드마크 가격 순서 | 세대수·연식 (단지명이 정확히 같을 때만) |
+| 수도권·광역시·중소도시·data | 가져오지 않음 — 같은 값을 지도·목록 모양으로 다시 보여주는 탭 |
+
+- 가격 기준(실거래가/호가)이 적혀 있지 않으므로 모두 **가격유형 '기타' + '과거자료'**로 저장합니다.
+- 평형(34")은 공급면적 기준이라 전용면적으로 바꾸지 않고 **평형 그대로** 둡니다. 단지 상세의 [면적 정보]에서 확인한 전용면적을 채울 수 있습니다.
+- 전세 칸이 비어 있거나 0이면 값 없음으로 둡니다. 시트의 전세율 열은 쓰지 않고 앱이 다시 계산합니다.
+- 서울 급지(1군~5군)는 단지 메모에 남깁니다.
+- 지역 칸이 빈 행은 바로 위 행의 지역으로, 인천 옛 구(서구·중구·동구)는 2026.7 개편 후 구로 추정해 넣고 미리보기에 표시합니다.
+- 같은 파일을 다시 가져와도 중복 기록은 생기지 않습니다.
+
 ## 화면 (1단계 MVP)
 
 | 화면 | 내용 |
@@ -70,7 +89,7 @@
 |---|---|
 | Region | id, parentId, name, type(sido/sigungu/gu), adminCode, group(수도권/광역시/중소도시) |
 | Apartment | id, regionId, name, address, builtYear, households, isLandmark, memo |
-| ApartmentUnit | id, apartmentId, exclusiveArea(㎡), label(84A 등) |
+| ApartmentUnit | id, apartmentId, exclusiveArea(㎡, 모르면 null), pyeong(평형), label(84A 등) |
 | PriceRecord | id, unitId, kind(매매/전세), amountWon, dealDate, surveyDate, priceType, sourceUrl, memo, entryId, legacy |
 | StudyNote | id, date, regionId, apartmentId, title, content, source (2·3단계에서 화면 연결) |
 

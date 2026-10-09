@@ -34,7 +34,8 @@ export function descendantIds(d: AppData, regionId: ID): Set<ID> {
 }
 
 export function unitsOf(d: AppData, apartmentId: ID): ApartmentUnit[] {
-  return d.units.filter((u) => u.apartmentId === apartmentId).sort((a, b) => a.exclusiveArea - b.exclusiveArea)
+  const size = (u: ApartmentUnit) => u.exclusiveArea ?? (u.pyeong != null ? u.pyeong * 2.5 : 0)
+  return d.units.filter((u) => u.apartmentId === apartmentId).sort((a, b) => size(a) - size(b))
 }
 
 /** 대표 면적: 기록이 가장 많은 면적 (동률이면 작은 면적) */
@@ -95,7 +96,20 @@ export function describePrice(d: AppData, p: PriceRecord): { apartment: Apartmen
 
 export function unitLabel(u: ApartmentUnit | null): string {
   if (!u) return '—'
-  return `전용 ${u.exclusiveArea}㎡${u.label ? ` (${u.label})` : ''}`
+  return `${unitShort(u)}${u.label ? ` (${u.label})` : ''}`
+}
+
+/** 전용 84.97㎡ / 34평형(전용 미확인) / 면적 미확인 */
+export function unitShort(u: ApartmentUnit): string {
+  if (u.exclusiveArea != null) return `전용 ${u.exclusiveArea}㎡`
+  if (u.pyeong != null) return `${u.pyeong}평형 (전용 미확인)`
+  return '면적 미확인'
+}
+
+/** 칩·선택지용 짧은 표기 */
+export function unitChip(u: ApartmentUnit): string {
+  const base = u.exclusiveArea != null ? `${u.exclusiveArea}㎡` : u.pyeong != null ? `${u.pyeong}평형` : '면적 미확인'
+  return `${base}${u.label ? ` ${u.label}` : ''}`
 }
 
 export { basisDate }

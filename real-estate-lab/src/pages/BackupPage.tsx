@@ -3,7 +3,8 @@ import { Download, FileJson, FileSpreadsheet, FlaskConical, RotateCcw, Upload } 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { PageHeader, Warn } from '@/components/bits'
+import { PageHeader } from '@/components/bits'
+import { SheetImportCard } from '@/components/SheetImportCard'
 import { toast } from '@/components/toast'
 import { addSampleData } from '@/data/sample'
 import { csvTemplate, downloadText, exportJSON, exportPricesCSV, importPricesCSV, mergeData, parseBackupJSON, type ImportStats } from '@/lib/backup'
@@ -60,6 +61,7 @@ export function BackupPage() {
       <PageHeader title="백업 · 복원" description="데이터는 이 브라우저(localStorage)에만 저장됩니다. 정기적으로 백업 파일을 내려받아 두세요." />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <SheetImportCard />
         <Card>
           <CardHeader>
             <div>
@@ -111,7 +113,7 @@ export function BackupPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              CSV 필수 열: 시도, 단지명, 전용면적, 가격종류(매매/전세), 금액(억), 조사일. 나머지(시군구, 거래일, 가격유형, 출처URL 등)는 선택입니다.
+              CSV 필수 열: 시도, 단지명, 전용면적 또는 평형, 가격종류(매매/전세), 금액(억), 조사일. 나머지(시군구, 거래일, 가격유형, 출처URL 등)는 선택입니다.
             </p>
           </CardContent>
         </Card>
@@ -220,24 +222,6 @@ export function BackupPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div>
-              <CardTitle>기존 Google Sheets 자료 가져오기</CardTitle>
-              <CardDescription>원본 파일은 수정하지 않습니다</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <ol className="list-decimal space-y-1 pl-5">
-              <li>2026년 공부용 사본을 엽니다 (원본 아님).</li>
-              <li>파일 → 다운로드 → Microsoft Excel(.xlsx) 로 전체를 내려받습니다.</li>
-              <li>그 파일을 Claude에게 보내 주시면, 탭 구조(시세트래킹·전국 랜드마크 가격 순서·수도권·광역시·중소도시·data)를 확인해 이 앱의 CSV 형식으로 변환하는 도구를 만들어 드립니다.</li>
-            </ol>
-            <Warn>
-              과거 기록은 '과거자료'로 표시하고 가격 유형을 '기타'로 가져옵니다. 실거래가인지 호가인지 확인된 경우에만 유형을 바꿔 주세요.
-            </Warn>
-          </CardContent>
-        </Card>
       </div>
 
       <ConfirmDialog

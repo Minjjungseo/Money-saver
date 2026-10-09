@@ -50,8 +50,10 @@ export interface Apartment {
 export interface ApartmentUnit {
   id: ID
   apartmentId: ID
-  /** 전용면적(㎡) */
-  exclusiveArea: number
+  /** 전용면적(㎡). 기존 시트처럼 평형만 알고 전용면적을 모르면 null */
+  exclusiveArea: number | null
+  /** 평형(공급면적 기준, 예: 34). 원본 자료에 평형만 있을 때 보존용 */
+  pyeong: number | null
   /** 면적 식별자(예: 84A, 59B). 없으면 null */
   label: string | null
   isSample: boolean

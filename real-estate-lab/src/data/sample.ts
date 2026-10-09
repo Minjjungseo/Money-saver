@@ -36,7 +36,7 @@ export function addSampleData(d: AppData, today: string): AppData {
       true,
     )
     data = a.data
-    const u = findOrCreateUnit(data, a.apartment.id, def.area, def.label, true)
+    const u = findOrCreateUnit(data, a.apartment.id, { area: def.area, label: def.label }, true)
     data = u.data
     let man = def.sale[0]
     const steps = def.sale[1]

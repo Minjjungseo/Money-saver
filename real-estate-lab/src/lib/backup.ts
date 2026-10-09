@@ -1,4 +1,4 @@
-import { addApartment, addRegion, findOrCreateUnit } from '@/store/ops'
+import { addApartment, ensureRegionPath, findOrCreateUnit } from '@/store/ops'
 import { PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type AppData, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
 import { normalize } from '@/store/storage'
 import { priceDedupeKey } from './calc'
@@ -97,7 +97,7 @@ export function mergeData(cur: AppData, incoming: AppData): { data: AppData; sta
 // ================= CSV =================
 
 export const CSV_HEADERS = [
-  '시도', '시군구', '단지명', '전용면적', '면적타입', '가격종류', '금액(억)', '거래일', '조사일',
+  '시도', '시군구', '단지명', '전용면적', '평형', '면적타입', '가격종류', '금액(억)', '거래일', '조사일',
   '가격유형', '출처URL', '메모', '주소', '준공연도', '세대수', '과거자료',
 ] as const
 
@@ -111,10 +111,9 @@ export function exportPricesCSV(d: AppData): string {
     const a = u && aptById.get(u.apartmentId)
     const r = a && regById.get(a.regionId)
     if (!u || !a || !r) continue
-    const sido = r.parentId ? (regById.get(r.parentId)?.name ?? '') : r.name
-    const sigungu = r.parentId ? r.name : ''
+    const [sido, ...rest] = r.id.split('/')
     rows.push([
-      sido, sigungu, a.name, u.exclusiveArea, u.label, PRICE_KIND_LABEL[p.kind], wonToEokInput(p.amountWon),
+      sido, rest.join(' '), a.name, u.exclusiveArea, u.pyeong, u.label, PRICE_KIND_LABEL[p.kind], wonToEokInput(p.amountWon),
       p.dealDate, p.surveyDate, PRICE_TYPE_LABEL[p.priceType], p.sourceUrl, p.memo, a.address, a.builtYear,
       a.households, p.legacy ? 'Y' : '',
     ])
@@ -125,7 +124,7 @@ export function exportPricesCSV(d: AppData): string {
 export function csvTemplate(): string {
   return toCSV([
     [...CSV_HEADERS],
-    ['서울', '강남구', '(단지명 입력)', 84.97, '84A', '매매', '25.5', '2026-09-15', '2026-10-01', '실거래가', 'https://rt.molit.go.kr', '', '', '', '', ''],
+    ['서울', '강남구', '(단지명 입력)', 84.97, '', '84A', '매매', '25.5', '2026-09-15', '2026-10-01', '실거래가', 'https://rt.molit.go.kr', '', '', '', '', ''],
   ])
 }
 
@@ -181,7 +180,7 @@ export function importPricesCSV(cur: AppData, text: string, today = todayISO()):
   }
   const header = rows[0].map((h) => h.trim())
   const col = (name: string) => header.indexOf(name)
-  for (const req of ['시도', '단지명', '전용면적', '가격종류', '금액(억)', '조사일']) {
+  for (const req of ['시도', '단지명', '가격종류', '금액(억)', '조사일']) {
     if (col(req) < 0) stats.errors.push({ line: 1, message: `필수 열 "${req}"이(가) 없습니다` })
   }
   if (stats.errors.length) return { data: cur, stats }
@@ -202,8 +201,13 @@ export function importPricesCSV(cur: AppData, text: string, today = todayISO()):
     if (!sidoRegion) return err(`알 수 없는 시도 "${sidoRaw}"`)
     const aptName = get('단지명')
     if (!aptName) return err('단지명이 비어 있습니다')
-    const area = Number(get('전용면적'))
-    if (!Number.isFinite(area) || area <= 0 || area > 400) return err(`전용면적 "${get('전용면적')}"이(가) 올바르지 않습니다`)
+    const areaRaw = get('전용면적')
+    const pyeongRaw = get('평형')
+    const area = areaRaw ? Number(areaRaw) : null
+    const pyeong = pyeongRaw ? Number(pyeongRaw) : null
+    if (area != null && (!Number.isFinite(area) || area < 10 || area > 400)) return err(`전용면적 "${areaRaw}"이(가) 올바르지 않습니다`)
+    if (pyeong != null && (!Number.isFinite(pyeong) || pyeong < 5 || pyeong > 150)) return err(`평형 "${pyeongRaw}"이(가) 올바르지 않습니다`)
+    if (area == null && pyeong == null) return err('전용면적 또는 평형 중 하나는 입력해야 합니다')
     const kind = parseKind(get('가격종류'))
     if (!kind) return err('가격종류는 "매매" 또는 "전세"여야 합니다')
     const amount = parseEok(get('금액(억)'))
@@ -224,18 +228,11 @@ export function importPricesCSV(cur: AppData, text: string, today = todayISO()):
     if (sourceUrl && !/^https?:\/\//i.test(sourceUrl)) return err('출처URL은 http:// 또는 https:// 로 시작해야 합니다')
 
     // 지역
-    let regionId = sidoRegion.id
-    const sigungu = get('시군구')
-    if (sigungu) {
-      const found = d.regions.find((r) => r.parentId === sidoRegion.id && r.name === sigungu)
-      if (found) regionId = found.id
-      else {
-        const res = addRegion(d, sidoRegion.id, sigungu, 'sigungu')
-        d = res.data
-        regionId = res.region.id
-        stats.added.regions++
-      }
-    }
+    const path = get('시군구').split(/\s+/).filter(Boolean)
+    const reg = ensureRegionPath(d, sidoRegion.id, path)
+    d = reg.data
+    const regionId = reg.regionId
+    stats.added.regions += reg.created
     // 단지
     let apt = d.apartments.find((a) => a.regionId === regionId && squash(a.name) === squash(aptName))
     if (!apt) {
@@ -248,7 +245,7 @@ export function importPricesCSV(cur: AppData, text: string, today = todayISO()):
     }
     // 면적
     const before = d.units.length
-    const ures = findOrCreateUnit(d, apt.id, area, get('면적타입') || null)
+    const ures = findOrCreateUnit(d, apt.id, { area, pyeong, label: get('면적타입') || null })
     d = ures.data
     if (d.units.length > before) stats.added.units++
 
