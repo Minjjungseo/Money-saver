@@ -70,6 +70,8 @@ export function parseResponse(xml) {
   const resultCode = tag(xml, 'resultCode')
   const resultMsg = tag(xml, 'resultMsg')
   if (authErr && !/NORMAL/i.test(authErr)) return { ok: false, items: [], totalCount: 0, error: `${authErr} (${tag(xml, 'returnReasonCode') ?? ''})` }
+  // 03 NODATA_ERROR: 그 달 거래 0건 (예전 형식 응답)
+  if ((resultCode && /^0*3$/.test(resultCode)) || /NODATA/i.test(resultMsg ?? '')) return { ok: true, items: [], totalCount: 0 }
   if (resultCode && !/^0+$/.test(resultCode)) return { ok: false, items: [], totalCount: 0, error: `${resultCode} ${resultMsg ?? ''}` }
   if (!/<response|<items/.test(xml)) return { ok: false, items: [], totalCount: 0, error: '알 수 없는 응답 형식' }
   const items = []
@@ -118,27 +120,77 @@ export function normalizeItem(kind, o) {
   }
 }
 
-/** 한 지역(LAWD_CD 5자리) · 한 달(YYYYMM) 전체 거래. 결과는 server/.cache 에 저장(지난달 이전은 하루, 이번 달은 1시간) */
-export async function fetchMonth(kind, lawdCd, ym, serviceKey, { useCache = true } = {}) {
-  const cacheDir = join(ROOT, 'server', '.cache')
-  const cacheFile = join(cacheDir, `${kind}-${lawdCd}-${ym}.json`)
-  const now = new Date()
+/**
+ * 다시 시도해도 소용없는 오류 (일괄 조회를 바로 멈춘다)
+ *  - 일일 호출 한도 초과(22 / LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR)
+ *  - 인증키 오류(30 SERVICE_KEY_IS_NOT_REGISTERED, 31 기한 만료, 20 접근 거부 등)
+ */
+export function isFatalApiError(message) {
+  return /LIMITED_NUMBER_OF_SERVICE_REQUESTS|SERVICE_KEY|DEADLINE_HAS_EXPIRED|ACCESS_DENIED|UNREGISTERED|^(20|22|30|31|32)\b/i.test(String(message))
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * 캐시 유효 시간
+ *  - 이번 달: 6시간 (신고가 계속 들어옴)
+ *  - 최근 3개월: 24시간 (신고기한 30일 + 해제 신고 반영)
+ *  - 그 이전: 7일 (해제 신고는 드물게 늦게도 들어오므로 영구 보관하지 않음)
+ */
+export function cacheMaxAgeMs(ym, now = new Date()) {
   const thisYm = `${now.getFullYear()}${pad(now.getMonth() + 1)}`
-  const maxAge = ym >= thisYm ? 3600_000 : 24 * 3600_000
-  if (useCache && existsSync(cacheFile) && Date.now() - statSync(cacheFile).mtimeMs < maxAge) {
-    return JSON.parse(readFileSync(cacheFile, 'utf8'))
+  if (ym >= thisYm) return 6 * 3600_000
+  if (recentMonths(3, now).includes(ym)) return 24 * 3600_000
+  return 7 * 24 * 3600_000
+}
+
+/** 네트워크 오류·5xx·429·일시 오류는 최대 retries 번 다시 시도 (1초, 2초, 4초…). 한도·인증 오류는 바로 실패 */
+async function requestPage(url, { retries = 3, baseDelayMs = 1000 } = {}) {
+  let lastErr
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) await sleep(baseDelayMs * 2 ** (attempt - 1))
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+      const xml = await res.text()
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = new Error(`HTTP ${res.status}: ${xml.slice(0, 200)}`)
+        continue
+      }
+      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}: ${xml.slice(0, 300)}`), { noRetry: true })
+      const parsed = parseResponse(xml)
+      if (!parsed.ok) {
+        const e = Object.assign(new Error(parsed.error), { raw: xml.slice(0, 500) })
+        if (isFatalApiError(parsed.error)) throw Object.assign(e, { fatal: true, noRetry: true })
+        lastErr = e // 01 APPLICATION_ERROR, 04 HTTP_ERROR, 05 SERVICE_TIMEOUT 등은 다시 시도
+        continue
+      }
+      return { xml, parsed, attempts: attempt + 1 }
+    } catch (e) {
+      if (e.noRetry) throw e
+      lastErr = e // 네트워크 오류, 시간 초과
+    }
+  }
+  throw Object.assign(lastErr ?? new Error('알 수 없는 오류'), { retriesExhausted: true })
+}
+
+/**
+ * 한 지역(LAWD_CD 5자리) · 한 달(YYYYMM) 전체 거래. 결과는 server/.cache 에 저장.
+ * 반환값의 fromCache / requests 로 실제 호출 수를 셀 수 있다.
+ */
+export async function fetchMonth(kind, lawdCd, ym, serviceKey, { useCache = true, retries = 3, baseDelayMs = 1000, cacheDir = join(ROOT, 'server', '.cache') } = {}) {
+  const cacheFile = join(cacheDir, `${kind}-${lawdCd}-${ym}.json`)
+  if (useCache && existsSync(cacheFile) && Date.now() - statSync(cacheFile).mtimeMs < cacheMaxAgeMs(ym)) {
+    return { ...JSON.parse(readFileSync(cacheFile, 'utf8')), fromCache: true, requests: 0 }
   }
   const all = []
   let total = Infinity
   let lastRaw = ''
+  let requests = 0
   for (let page = 1; all.length < total && page <= 20; page++) {
     const qs = new URLSearchParams({ serviceKey, LAWD_CD: lawdCd, DEAL_YMD: ym, pageNo: String(page), numOfRows: '1000' })
-    const res = await fetch(`${ENDPOINTS[kind]}?${qs}`)
-    const xml = await res.text()
+    const { xml, parsed, attempts } = await requestPage(`${ENDPOINTS[kind]}?${qs}`, { retries, baseDelayMs })
+    requests += attempts
     lastRaw = xml
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${xml.slice(0, 300)}`)
-    const parsed = parseResponse(xml)
-    if (!parsed.ok) throw Object.assign(new Error(parsed.error), { raw: xml.slice(0, 500) })
     total = parsed.totalCount
     all.push(...parsed.items.map((o) => normalizeItem(kind, o)))
     if (parsed.items.length === 0) break
@@ -146,7 +198,7 @@ export async function fetchMonth(kind, lawdCd, ym, serviceKey, { useCache = true
   const result = { kind, lawdCd, ym, fetchedAt: new Date().toISOString(), items: all, sampleRaw: lastRaw.slice(0, 400) }
   mkdirSync(cacheDir, { recursive: true })
   writeFileSync(cacheFile, JSON.stringify(result))
-  return result
+  return { ...result, fromCache: false, requests }
 }
 
 /** 최근 n개월 YYYYMM 목록 (이번 달 포함, 최신 순) */

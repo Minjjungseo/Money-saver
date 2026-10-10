@@ -12,5 +12,5 @@ export default defineConfig(({ mode }) => ({
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: { port: 5173 },
   build: { chunkSizeWarningLimit: 1000, outDir: mode === 'single' ? 'dist-single' : 'dist' },
-  test: { environment: 'node', include: ['src/**/*.test.ts', 'src/**/*.test.tsx'] },
+  test: { environment: 'node', include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'server/**/*.test.mjs'] },
 }))

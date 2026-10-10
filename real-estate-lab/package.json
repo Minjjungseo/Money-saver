@@ -11,7 +11,9 @@
     "typecheck": "tsc -b",
     "build:single": "tsc -b && vite build --mode single",
     "molit:test": "node server/test-landmark.mjs",
-    "molit:server": "node server/proxy.mjs"
+    "molit:server": "node server/proxy.mjs",
+    "molit:batch": "node server/batch.mjs",
+    "molit:landmarks": "esbuild scripts/build-landmarks.ts --bundle --platform=node --format=esm --packages=external --tsconfig=tsconfig.app.json --log-level=warning --outfile=server/.cache/build-landmarks.mjs && node server/.cache/build-landmarks.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
