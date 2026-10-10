@@ -32,7 +32,7 @@ export function normalize(raw: Partial<AppData>): AppData {
     schemaVersion: SCHEMA_VERSION,
     regions,
     apartments: Array.isArray(raw.apartments)
-      ? raw.apartments.map((a) => ({ ...a, transitMemo: a.transitMemo ?? null, schoolMemo: a.schoolMemo ?? null, infraMemo: a.infraMemo ?? null }))
+      ? raw.apartments.map((a) => ({ ...a, transitMemo: a.transitMemo ?? null, schoolMemo: a.schoolMemo ?? null, infraMemo: a.infraMemo ?? null, location: a.location ?? null }))
       : [],
     units: Array.isArray(raw.units) ? raw.units.map((u) => ({ ...u, pyeong: u.pyeong ?? null })) : [],
     prices: Array.isArray(raw.prices) ? raw.prices : [],

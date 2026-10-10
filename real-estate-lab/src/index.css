@@ -29,3 +29,30 @@
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* 지도 가격 라벨 */
+.mrel-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 8px;
+  font-family: inherit;
+  line-height: 1.15;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+}
+.mrel-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(15, 23, 42, 0.35);
+  border-bottom: 0;
+}
+.mrel-pin-title { font-size: 11px; font-weight: 600; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.mrel-pin-sub { font-size: 11px; font-variant-numeric: tabular-nums; }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Building2, DatabaseBackup, GitCompareArrows, Group, Home, Lightbulb, MapPinned, Menu, PenLine } from 'lucide-react'
+import { Building2, DatabaseBackup, GitCompareArrows, Group, Home, Lightbulb, Map as MapIcon, MapPinned, Menu, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hasSample } from '@/store/ops'
 import { loadWarning, useData } from '@/store/store'
@@ -12,6 +12,7 @@ export const NAV = [
   { to: '/regions', label: '지역', icon: MapPinned },
   { to: '/apartments', label: '단지', icon: Building2 },
   { to: '/compare', label: '가격 비교', icon: GitCompareArrows },
+  { to: '/map', label: '지도', icon: MapIcon },
   { to: '/areas', label: '생활권', icon: Group },
   { to: '/candidates', label: '후보 노트', icon: Lightbulb },
   { to: '/input', label: '시세 입력', icon: PenLine },

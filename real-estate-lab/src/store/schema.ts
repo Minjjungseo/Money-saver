@@ -46,9 +46,23 @@ export interface Apartment {
   transitMemo: string | null
   schoolMemo: string | null
   infraMemo: string | null
+  /** 지도 위치. 카카오 검색 결과에서 직접 고르거나 직접 입력한 경우에만 있다. 모르면 null */
+  location: ApartmentLocation | null
   isSample: boolean
   createdAt: string
   updatedAt: string
+}
+
+export type LocationSource = 'kakao-place' | 'kakao-address' | 'manual'
+
+export interface ApartmentLocation {
+  lat: number
+  lng: number
+  source: LocationSource
+  /** 위치를 고를 때 본 장소명·주소 (검증 기록) */
+  matchedName: string | null
+  matchedAddress: string | null
+  setAt: string
 }
 
 export interface ApartmentUnit {
@@ -167,6 +181,7 @@ export interface AppData {
 }
 
 export const CANDIDATE_STATUS_LABEL: Record<CandidateStatus, string> = { studying: '검토 중', verified: '근거 확인됨', dropped: '보류·기각' }
+export const LOCATION_SOURCE_LABEL: Record<LocationSource, string> = { 'kakao-place': '카카오 장소 검색', 'kakao-address': '카카오 주소 검색', manual: '직접 입력' }
 export const PRICE_KIND_LABEL: Record<PriceKind, string> = { sale: '매매', jeonse: '전세' }
 export const PRICE_TYPE_LABEL: Record<PriceType, string> = { actual: '실거래가', asking: '호가', other: '기타' }
 export const REGION_GROUP_LABEL: Record<RegionGroup, string> = { capital: '수도권', metro: '광역시', local: '중소도시' }

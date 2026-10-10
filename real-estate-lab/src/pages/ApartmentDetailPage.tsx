@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, GitCompareArrows, Lightbulb, Pencil, PenLine, Star, Trash2 } from 'lucide-react'
+import { ChevronRight, GitCompareArrows, Lightbulb, MapPin, Pencil, PenLine, Star, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/input'
@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PriceEditDialog } from '@/components/PriceEditDialog'
 import { UnitEditDialog } from '@/components/UnitEditDialog'
 import { CandidateFormDialog } from '@/components/CandidateFormDialog'
+import { LocationDialog } from '@/components/LocationDialog'
 import { PriceHistoryChart, RatioChart } from '@/components/PriceCharts'
 import { ChangeText, EmptyState, PriceTypeBadge, SampleBadge, SourceLink, Warn } from '@/components/bits'
 import { toast } from '@/components/toast'
@@ -24,7 +25,7 @@ import { regionPath, unitChip, unitLabel, unitsOf } from '@/lib/selectors'
 import { cn } from '@/lib/utils'
 import { addToCompare, deleteApartment, deletePrice, MAX_COMPARE, updateApartment } from '@/store/ops'
 import { update, useData } from '@/store/store'
-import { PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type ApartmentUnit, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
+import { LOCATION_SOURCE_LABEL, PRICE_KIND_LABEL, PRICE_TYPE_LABEL, type ApartmentUnit, type PriceKind, type PriceRecord, type PriceType } from '@/store/schema'
 
 const KINDS: PriceKind[] = ['sale', 'jeonse']
 const TYPES: PriceType[] = ['actual', 'asking', 'other']
@@ -42,6 +43,7 @@ export function ApartmentDetailPage() {
   const [delRec, setDelRec] = useState<PriceRecord | null>(null)
   const [editUnit, setEditUnit] = useState<ApartmentUnit | null>(null)
   const [candidateOpen, setCandidateOpen] = useState(false)
+  const [locating, setLocating] = useState(false)
 
   const unit = units.find((u) => u.id === unitPick) ?? units.find((u) => data.prices.some((p) => p.unitId === u.id)) ?? units[0] ?? null
   const prices = useMemo(() => (unit ? data.prices.filter((p) => p.unitId === unit.id) : []), [data.prices, unit])
@@ -122,6 +124,28 @@ export function ApartmentDetailPage() {
           <Info label="교통" value={apt.transitMemo} className="col-span-2 sm:col-span-4 lg:col-span-2" />
           <Info label="학군" value={apt.schoolMemo} />
           <Info label="생활 인프라" value={apt.infraMemo} />
+          <div className="col-span-2 sm:col-span-4">
+            <div className="text-xs text-muted-foreground">지도 위치</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {apt.location ? (
+                <span>
+                  {apt.location.matchedName ?? '직접 입력'}
+                  <span className="ml-1 text-xs text-muted-foreground">({LOCATION_SOURCE_LABEL[apt.location.source]})</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">미확인 — 지도에 표시되지 않습니다</span>
+              )}
+              <Button size="sm" variant="ghost" onClick={() => setLocating(true)}>
+                <MapPin />
+                {apt.location ? '위치 수정' : '위치 정하기'}
+              </Button>
+              {apt.location && (
+                <Link to="/map" className="text-xs text-primary underline">
+                  지도에서 보기
+                </Link>
+              )}
+            </div>
+          </div>
           <div className="col-span-2 sm:col-span-4">
             <div className="text-xs text-muted-foreground">생활권</div>
             <div className="mt-1 flex flex-wrap gap-1.5">
@@ -346,6 +370,7 @@ export function ApartmentDetailPage() {
       <ApartmentFormDialog open={editing} onClose={() => setEditing(false)} apartment={apt} />
       <PriceEditDialog record={editRec} onClose={() => setEditRec(null)} />
       <UnitEditDialog unit={editUnit} onClose={() => setEditUnit(null)} />
+      <LocationDialog apartment={locating ? apt : null} onClose={() => setLocating(false)} />
       <CandidateFormDialog open={candidateOpen} onClose={() => setCandidateOpen(false)} defaultTarget={{ apartmentId: apt.id, unitId: unit?.id ?? null }} />
       <ConfirmDialog
         open={!!delRec}

@@ -12,6 +12,7 @@ import { AreasPage } from '@/pages/AreasPage'
 import { AreaDetailPage } from '@/pages/AreaDetailPage'
 import { CandidatesPage } from '@/pages/CandidatesPage'
 import { MorePage } from '@/pages/MorePage'
+import { MapPage } from '@/pages/MapPage'
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="areas/:areaId" element={<AreaDetailPage />} />
         <Route path="candidates" element={<CandidatesPage />} />
         <Route path="more" element={<MorePage />} />
+        <Route path="map" element={<MapPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

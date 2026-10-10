@@ -89,8 +89,22 @@
 - 앱은 '저평가'를 판정하지 않습니다. 가격 차이, 연식·세대수 차이, 그리고 주의사항(가격 유형 불일치, 기준일 차이, 면적 차이·전용면적 미확인, 과거자료)만 보여줍니다.
 - 같은 가격 유형끼리 맞춰 비교하고(실거래가 → 호가 → 기타 순), 맞출 수 없으면 경고합니다.
 
-## 3단계 예정: 지도
-- 실제 지도 API를 연결한 뒤 제공합니다. 위치를 모르는 단지를 임의 좌표로 지도처럼 보이게 하지 않습니다.
+## 3단계: 지도 (카카오맵)
+
+### 처음 한 번 설정
+1. https://developers.kakao.com 로그인 → 내 애플리케이션 → 애플리케이션 추가하기
+2. 앱 설정 → 플랫폼 → **Web 플랫폼 등록** → 사이트 도메인에 `http://localhost:5173` 추가 (휴대폰으로 Network 주소를 쓰면 그 주소도 추가)
+3. 제품 설정에 '카카오맵' 항목이 있으면 사용 설정 켜기
+4. 앱 키의 **JavaScript 키**를 복사해 앱의 [지도] 화면에 붙여 넣기
+
+키는 이 브라우저(localStorage)에만 저장되고 백업 파일·코드 저장소에는 들어가지 않습니다. `.env.local` 파일에 `VITE_KAKAO_JS_KEY=키` 로 넣어도 됩니다.
+
+### 지도 규칙
+- **위치를 확인한 단지만** 지도에 그립니다. 위치를 모르는 단지에 임의 좌표를 주지 않습니다.
+- 위치는 카카오 장소·주소 검색 결과에서 **직접 고르거나**, 확인한 좌표를 직접 입력해야 저장됩니다.
+- [위치 찾기]는 후보를 한꺼번에 검색해 확인 목록을 보여줍니다. 이름·분류(아파트)·지역이 모두 맞는 후보만 미리 체크되고, 저장은 확인 후에만 합니다.
+- 라벨 색 = 대표 면적 최신 매매가 구간(네이비 진하기). 빨간 테두리 = 비교 목록에 있는 단지.
+- 생활권을 고르면 소속 단지 위치를 이은 점선 영역을 그립니다. 실제 생활권 경계가 아닙니다.
 
 ## 데이터 원칙
 
@@ -111,7 +125,7 @@
 | 엔터티 | 주요 필드 |
 |---|---|
 | Region | id, parentId, name, type(sido/sigungu/gu), adminCode, group(수도권/광역시/중소도시) |
-| Apartment | id, regionId, name, address, builtYear, households, isLandmark, memo |
+| Apartment | id, regionId, name, address, builtYear, households, isLandmark, memo, transit/school/infraMemo, location(위도·경도·출처, 모르면 null) |
 | ApartmentUnit | id, apartmentId, exclusiveArea(㎡, 모르면 null), pyeong(평형), label(84A 등) |
 | PriceRecord | id, unitId, kind(매매/전세), amountWon, dealDate, surveyDate, priceType, sourceUrl, memo, entryId, legacy |
 | StudyNote | id, date, regionId, apartmentId, title, content, source (화면 연결 예정) |

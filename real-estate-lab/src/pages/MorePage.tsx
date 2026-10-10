@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, Map } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { NAV } from '@/components/Layout'
 import { PageHeader } from '@/components/bits'
 
@@ -18,10 +18,6 @@ export function MorePage() {
             </Link>
           </li>
         ))}
-        <li className="flex items-center gap-3 px-4 py-3.5 text-sm text-muted-foreground">
-          <Map className="size-5" />
-          지도 분석 <span className="text-xs">(3단계 · 지도 API 연결 후 제공)</span>
-        </li>
       </ul>
     </>
   )

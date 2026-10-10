@@ -4,7 +4,7 @@
 import { priceDedupeKey } from '@/lib/calc'
 import { newId, nowStamp } from '@/lib/id'
 import type {
-  Apartment, ApartmentUnit, AppData, Candidate, ID, ISODate, LivingArea, PriceKind, PriceRecord, PriceType, Region, RegionType, UnitRef,
+  Apartment, ApartmentLocation, ApartmentUnit, AppData, Candidate, ID, ISODate, LivingArea, PriceKind, PriceRecord, PriceType, Region, RegionType, UnitRef,
 } from './schema'
 
 // ---------- 지역 ----------
@@ -49,6 +49,7 @@ export function addApartment(d: AppData, input: ApartmentInput, isSample = false
     transitMemo: null,
     schoolMemo: null,
     infraMemo: null,
+    location: null,
     ...input,
     name: input.name.trim(),
     isSample,
@@ -310,4 +311,17 @@ export function updateCandidate(d: AppData, id: ID, input: Partial<CandidateInpu
 
 export function deleteCandidate(d: AppData, id: ID): AppData {
   return { ...d, candidates: d.candidates.filter((c) => c.id !== id) }
+}
+
+// ---------- 지도 위치 ----------
+
+export function setApartmentLocation(d: AppData, apartmentId: ID, location: ApartmentLocation | null, address?: string | null): AppData {
+  return {
+    ...d,
+    apartments: d.apartments.map((a) =>
+      a.id === apartmentId
+        ? { ...a, location, address: a.address ?? (address?.trim() || null), updatedAt: nowStamp() }
+        : a,
+    ),
+  }
 }
