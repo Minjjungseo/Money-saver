@@ -319,6 +319,12 @@ function KeySetup({ onSaved }: { onSaved: (key: string) => void }) {
           <CardTitle>카카오맵 연결 (처음 한 번)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
+          {typeof window !== 'undefined' && window.location.protocol === 'file:' && (
+            <Warn>
+              지금은 파일(index.html)을 직접 열어 쓰고 있어 카카오맵을 쓸 수 없습니다. 카카오는 등록한 웹 주소에서만 지도를 열어 줍니다.
+              지도가 필요하면 README의 실행 방법대로 <code>npm run dev</code>로 실행해 주세요. 지도 외 기능은 모두 그대로 쓸 수 있습니다.
+            </Warn>
+          )}
           <ol className="list-decimal space-y-1.5 pl-5">
             <li>
               <a href="https://developers.kakao.com" target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-primary underline">

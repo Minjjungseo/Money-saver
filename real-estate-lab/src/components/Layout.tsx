@@ -100,7 +100,10 @@ export function Layout() {
 function Brand() {
   return (
     <NavLink to="/" className="flex items-center gap-2 px-1">
-      <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="size-7" />
+      <svg viewBox="0 0 32 32" className="size-7" aria-hidden>
+        <rect width="32" height="32" rx="7" fill="#1e3a8a" />
+        <path d="M7 24V14l5-4 5 4v10M17 24V9l8-3v18" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinejoin="round" />
+      </svg>
       <span className="text-sm font-bold tracking-tight text-primary">MY REAL ESTATE LAB</span>
     </NavLink>
   )
