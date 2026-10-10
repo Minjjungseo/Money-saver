@@ -18,7 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ROOT, fetchMonth, loadServiceKey, recentMonths } from './molit.mjs'
-import { areaBand, jeonseRatio, matchName, pickLatestJeonse, pickLatestSale, similarNames } from './match.mjs'
+import { chooseAreaType, jeonseRatio, matchName, pickLatestJeonse, pickLatestSale, similarNames, typeWindow } from './match.mjs'
 
 export const PERIODS = [6, 12, 24]
 export const SOURCE = '국토교통부 실거래가 API (공공데이터포털 15126469 매매 / 15126474 전월세)'
@@ -29,90 +29,111 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 export const toEok = (won) => (won == null ? null : Number((won / 1e8).toFixed(4)))
 const daysBetween = (a, b) => Math.round(Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000)
 const nameLevelLabel = { exact: '일치', alias: '일치(직접 지정한 이름)', partial: '부분 일치', none: '못 찾음' }
-const rank = { alias: 0, exact: 0, partial: 1, none: 2 }
+
+const usableOf = (kind, items) =>
+  kind === 'sale' ? items.filter((it) => !it.cancelled && it.priceWon != null) : items.filter((it) => it.isJeonse && it.depositWon != null)
 
 /**
  * 한 종류(매매 또는 전세)를 6 → 12 → 24개월로 넓혀 찾는다.
+ * names 가 null 이면 매번 단지명을 다시 맞춰 보고, 주어지면 그 API 단지명만 쓴다.
  * @returns {{ period: number|null, monthsFetched: number, region: object[], name: object, mine: object[], inBand: object[] }}
  */
-async function searchKind(kind, lm, band, getMonth, months) {
+async function searchKind(kind, lm, band, getMonth, months, names = null) {
   const region = []
   let fetched = 0
   let last = null
   for (const p of PERIODS) {
     for (const ym of months.slice(fetched, p)) region.push(...(await getMonth(kind, lm.lawdCd, ym)).items.map((it) => ({ ...it, ym })))
     fetched = p
-    const name = matchName(lm, region)
+    const name = names ? { level: 'fixed', names } : matchName(lm, region)
     const mine = region.filter((it) => name.names.includes(it.aptName))
     const inBand = mine.filter((it) => it.area != null && it.area >= band.min && it.area <= band.max)
-    const usable = kind === 'sale' ? inBand.filter((it) => !it.cancelled && it.priceWon != null) : inBand.filter((it) => it.isJeonse && it.depositWon != null)
-    last = { period: usable.length ? p : null, monthsFetched: p, region, name, mine, inBand }
-    if (usable.length) return last
+    last = { period: usableOf(kind, inBand).length ? p : null, monthsFetched: p, region, name, mine, inBand }
+    if (last.period) return last
   }
   return last
 }
 
+const monthsAgo = (date, now) => {
+  const d = new Date(date)
+  return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
+}
+const uniqSorted = (arr) => [...new Set(arr.filter((v) => v != null && v !== ''))].sort()
+
 /** 단지 1개 조회 → { row(요약), trades(상세) } */
 export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
   const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-  const band = areaBand(lm)
-  const row = {
-    조회일: today,
-    시도: lm.sido ?? '',
-    시군구: lm.sigungu ?? '',
-    지역코드: lm.lawdCd ?? '',
-    시트단지명: lm.sheetText ?? lm.name,
-    시트평형: lm.pyeong ?? lm.pyeongLabel ?? '',
-    API단지명: '',
-    단지매칭: '',
-    면적기준: band.label,
-    '매매가(억)': null, '매매가(원)': null, 매매계약일: null, 매매전용면적: null, 매매층: null, 매매거래유형: null,
-    매매조회기간: null, 매매건수: 0, 해제제외건수: 0,
-    '전세가(억)': null, '전세가(원)': null, 전세계약일: null, 전세전용면적: null, 전세층: null, 전세계약구분: null,
-    전세조회기간: null, 전세건수: 0,
-    '전세가율(%)': null,
-    상태: '',
-    검증사유: '',
-    출처: SOURCE,
-  }
+  const win = typeWindow(lm)
+  const row = emptyRow(lm, today)
   if (!lm.lawdCd) {
     row.상태 = '지역코드 없음'
-    row.검증사유 = 'server/landmarks.json 에 lawdCd(시군구 5자리)를 적으면 조회됩니다'
+    row.매칭검증사유 = 'server/landmarks.json 에 lawdCd(시군구 5자리)를 적으면 조회됩니다'
     return { row, trades: [] }
   }
   const months = recentMonths(24, now)
-  const sale = await searchKind('sale', lm, band, getMonth, months)
-  const rent = await searchKind('rent', lm, band, getMonth, months)
-  const reasons = []
+  const match = [] // 매칭(단지명·지역·면적) 불확실 → 검증 필요
+  const caution = [] // 매칭은 맞지만 거래 시점·성격 주의 → 거래 시점 주의
 
-  // 지역코드 점검: 응답의 시군구 코드가 요청과 다르거나, 그 지역 전체 거래가 0건이면 코드 오기 의심
-  const regionAll = [...sale.region, ...rent.region]
-  const wrongSgg = regionAll.find((it) => it.sggCd && it.sggCd !== lm.lawdCd)
-  if (regionAll.length === 0 || wrongSgg) {
+  // 1차: 평형으로 있을 수 있는 면적 범위 안에서 매매·전세를 각각 찾는다
+  const sale1 = await searchKind('sale', lm, win, getMonth, months)
+  const rent1 = await searchKind('rent', lm, win, getMonth, months)
+
+  // 지역코드 점검: 응답 지역코드 대부분이 요청과 같아야 한다 (한두 건 다른 값은 무시)
+  const regionAll = [...sale1.region, ...rent1.region]
+  const coded = regionAll.filter((it) => /^\d{5}$/.test(String(it.sggCd ?? '')))
+  const same = coded.filter((it) => it.sggCd === lm.lawdCd).length
+  row.지역코드일치 = coded.length ? `${Math.round((same / coded.length) * 100)}% (${coded.length}건 중 ${same})` : regionAll.length ? '응답에 지역코드 없음' : '거래 0건'
+  if (regionAll.length === 0 || (coded.length && same / coded.length < 0.5)) {
+    const others = uniqSorted(coded.filter((it) => it.sggCd !== lm.lawdCd).map((it) => it.sggCd)).join(', ')
     row.상태 = '지역코드 확인 필요'
-    row.검증사유 = wrongSgg
-      ? `요청 ${lm.lawdCd} / 응답 지역코드 ${wrongSgg.sggCd}`
-      : `지역코드 ${lm.lawdCd} 로 ${sale.monthsFetched}개월간 이 시군구 전체 거래가 0건 (코드 확인 필요)`
+    row.매칭검증사유 = regionAll.length
+      ? `요청 ${lm.lawdCd} / 응답 지역코드 대부분 ${others}`
+      : `지역코드 ${lm.lawdCd} 로 24개월간 이 시군구 전체 거래가 0건 (코드 확인 필요)`
     return { row, trades: [] }
   }
 
-  // 단지명
-  const names = [...new Set([...sale.name.names, ...rent.name.names])]
-  const worst = rank[sale.name.level] >= rank[rent.name.level] ? sale.name.level : rent.name.level
-  const best = rank[sale.name.level] <= rank[rent.name.level] ? sale.name.level : rent.name.level
-  row.API단지명 = names.join(' / ')
-  row.단지매칭 = nameLevelLabel[best === 'none' ? 'none' : worst === 'none' ? best : worst]
-  if (best === 'none') {
-    const allNames = regionAll.map((it) => it.aptName)
-    const sim = similarNames(lm.name, allNames)
+  // 단지명: 매매·전세 거래를 합쳐 한 번에 맞춘다
+  const name = matchName(lm, regionAll)
+  row.API단지명 = name.names.join(' / ')
+  row.단지매칭 = nameLevelLabel[name.level]
+  if (name.level === 'none') {
+    const sim = similarNames(lm.name, regionAll.map((it) => it.aptName))
     row.상태 = '단지명 확인 필요'
-    row.검증사유 = sim.length
+    row.매칭검증사유 = sim.length
       ? `같은 시군구에서 같은 이름을 못 찾음. 비슷한 API 단지명: ${sim.join(', ')} → 맞으면 landmarks.json 의 apiNames 에 적어 주세요`
       : '같은 시군구에서 같은/비슷한 이름을 못 찾음 (지역코드·단지명 확인 필요)'
     return { row, trades: [] }
   }
-  if (worst === 'partial' || best === 'partial') reasons.push(`단지명 부분 일치(API: ${names.join(', ')}) — 같은 단지인지 확인`)
-  if (!band.certain) reasons.push(`면적 기준 불확실: ${band.label}`)
+  const mineAll = regionAll.filter((it) => name.names.includes(it.aptName))
+  const dongs = uniqSorted(mineAll.map((it) => it.dong))
+  const years = uniqSorted(mineAll.map((it) => it.buildYear))
+  row.법정동 = dongs.join(' / ')
+  row.준공연도 = years.join(' / ')
+  if (name.level === 'partial') match.push(`단지명 부분 일치(API: ${name.names.join(', ')}) — 같은 단지인지 확인`)
+  if (dongs.length > 1) match.push(`API 단지명이 여러 법정동에 있음(${dongs.join(', ')}) — 다른 단지가 섞였는지 확인`)
+  if (name.names.length > 1) row.블록구분 = `API 단지명 ${name.names.length}개 합산: ${name.names.join(', ')}`
+  if (name.names.length > 1 && years.length > 1) match.push(`합산한 API 단지명의 준공연도가 다름(${years.join(', ')}) — 같은 단지·블록인지 확인`)
+
+  // 전용면적 타입 하나만 고른다. 거래가 적은 타입을 놓치지 않도록 전월세(월세 포함)는 최소 12개월을 본다
+  const typeItems = [...mineAll]
+  for (const ym of months.slice(rent1.monthsFetched, 12)) {
+    typeItems.push(...(await getMonth('rent', lm.lawdCd, ym)).items.filter((it) => name.names.includes(it.aptName)))
+  }
+  const type = chooseAreaType(lm, typeItems)
+  row.면적기준 = type.label
+  row.면적후보 = type.candidates
+  if (!type.band) {
+    row.상태 = '거래 없음'
+    row.매칭검증사유 = `${type.label}. 이 단지의 거래 면적: ${type.candidates || '없음'} → 맞는 타입이면 landmarks.json 에 areaMin/areaMax 를 적어 주세요`
+    return { row, trades: [] }
+  }
+  row.선택전용타입 = type.band.min === type.band.max ? `${type.band.min}㎡` : `${type.band.min}~${type.band.max}㎡`
+  if (!type.certain) match.push(`면적 타입 불확실: ${type.label}`)
+
+  // 2차: 고른 타입으로 매매·전세를 각각 다시 6 → 12 → 24개월 (이미 받은 달은 다시 호출하지 않음)
+  const band = { min: type.band.min - 0.005, max: type.band.max + 0.005 }
+  const sale = await searchKind('sale', lm, band, getMonth, months, name.names)
+  const rent = await searchKind('rent', lm, band, getMonth, months, name.names)
 
   // 매매
   const s = pickLatestSale(sale.inBand)
@@ -124,7 +145,9 @@ export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
       '매매가(억)': toEok(s.latest.priceWon), '매매가(원)': s.latest.priceWon, 매매계약일: s.latest.contractDate,
       매매전용면적: s.latest.area, 매매층: s.latest.floor, 매매거래유형: s.latest.dealingType ?? '',
     })
-    if (s.latest.dealingType && /직거래/.test(s.latest.dealingType)) reasons.push('최신 매매가 직거래(특수관계 거래 등으로 시세와 다를 수 있음)')
+    const ago = monthsAgo(s.latest.contractDate, now)
+    if (ago > 6) caution.push(`최신 매매가 ${ago}개월 전 거래`)
+    if (s.latest.dealingType && /직거래/.test(s.latest.dealingType)) caution.push('최신 매매가 직거래(특수관계 거래 등으로 시세와 다를 수 있음)')
   }
 
   // 전세 (매매 면적과 같은 면적 우선)
@@ -136,32 +159,32 @@ export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
       '전세가(억)': toEok(j.latest.depositWon), '전세가(원)': j.latest.depositWon, 전세계약일: j.latest.contractDate,
       전세전용면적: j.latest.area, 전세층: j.latest.floor, 전세계약구분: j.latest.contractType ?? '',
     })
-    if (j.renewalOnly) reasons.push('최신 전세가 갱신 계약뿐(인상 상한 적용으로 시세보다 낮을 수 있음)')
+    const ago = monthsAgo(j.latest.contractDate, now)
+    if (ago > 6) caution.push(`최신 전세가 ${ago}개월 전 거래`)
+    if (j.renewalOnly) caution.push('최신 전세가 갱신 계약뿐(인상 상한 적용으로 시세보다 낮을 수 있음)')
   }
 
-  // 전세가율
+  // 전세가율 (같은 타입 안에서도 ±1㎡ 넘게 다르면 계산하지 않음)
   if (s.latest && j.latest) {
     const r = jeonseRatio(s.latest, j.latest)
-    if (r == null) reasons.push(`매매(${s.latest.area}㎡)와 전세(${j.latest.area}㎡) 면적이 달라 전세가율 계산 안 함`)
+    if (r == null) match.push(`매매(${s.latest.area}㎡)와 전세(${j.latest.area}㎡) 면적이 달라 전세가율 계산 안 함`)
     else {
       row['전세가율(%)'] = Number(r.toFixed(1))
       const gap = daysBetween(s.latest.contractDate, j.latest.contractDate)
-      if (gap > DATE_GAP_WARN_DAYS) reasons.push(`매매·전세 계약일 차이 ${gap}일 — 전세가율 해석 주의`)
+      if (gap > DATE_GAP_WARN_DAYS) caution.push(`매매·전세 계약일 차이 ${gap}일 — 전세가율 해석 주의`)
     }
   }
 
   const missing = []
   if (!s.latest) missing.push('매매 거래 없음(24개월)')
   if (!j.latest) missing.push('전세 거래 없음(24개월)')
-  if (!s.latest && !j.latest) {
-    row.상태 = '거래 없음'
-    const outside = [...sale.mine, ...rent.mine].filter((it) => !(it.area >= band.min && it.area <= band.max))
-    const areas = [...new Set(outside.map((it) => it.area))].sort((a, b) => a - b)
-    row.검증사유 = [...reasons, areas.length ? `면적 기준 밖 거래만 있음(전용 ${areas.slice(0, 6).join(', ')}㎡)` : '24개월간 이 단지 거래 없음'].join(' / ')
-  } else {
-    row.상태 = reasons.length ? '검증 필요' : missing.length ? '일부 거래 없음' : '정상'
-    row.검증사유 = [...reasons, ...missing].join(' / ')
-  }
+  row.매칭검증사유 = match.join(' / ')
+  row.거래주의사유 = [...caution, ...missing].join(' / ')
+  if (!s.latest && !j.latest) row.상태 = '거래 없음'
+  else if (match.length) row.상태 = '검증 필요'
+  else if (caution.length) row.상태 = '거래 시점 주의'
+  else if (missing.length) row.상태 = '일부 거래 없음'
+  else row.상태 = '정상'
 
   // 상세 거래 (기준 면적 안, 조회한 기간 전체)
   const pickedSale = s.latest
@@ -268,20 +291,23 @@ export async function runBatch({ landmarks, fetcher, now = new Date(), gapMs = 1
 
 function stub(lm, now, status, reason) {
   const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-  return {
-    row: {
-      조회일: today, 시도: lm.sido ?? '', 시군구: lm.sigungu ?? '', 지역코드: lm.lawdCd ?? '', 시트단지명: lm.sheetText ?? lm.name,
-      시트평형: lm.pyeong ?? lm.pyeongLabel ?? '', 상태: status, 검증사유: reason, 출처: SOURCE,
-    },
-    trades: [],
-  }
+  return { row: { ...emptyRow(lm, today), 상태: status, 매칭검증사유: reason }, trades: [] }
+}
+
+function emptyRow(lm, today) {
+  const row = Object.fromEntries(SUMMARY_HEADERS.map((h) => [h, null]))
+  return Object.assign(row, {
+    조회일: today, 시도: lm.sido ?? '', 시군구: lm.sigungu ?? '', 지역코드: lm.lawdCd ?? '', 시트단지명: lm.sheetText ?? lm.name,
+    시트평형: lm.pyeong ?? lm.pyeongLabel ?? '', 매매건수: 0, 해제제외건수: 0, 전세건수: 0, 출처: SOURCE,
+  })
 }
 
 export const SUMMARY_HEADERS = [
-  '조회일', '시도', '시군구', '지역코드', '시트단지명', '시트평형', 'API단지명', '단지매칭', '면적기준',
+  '조회일', '시도', '시군구', '지역코드', '지역코드일치', '시트단지명', '시트평형',
+  'API단지명', '단지매칭', '법정동', '준공연도', '블록구분', '면적기준', '선택전용타입', '면적후보',
   '매매가(억)', '매매가(원)', '매매계약일', '매매전용면적', '매매층', '매매거래유형', '매매조회기간', '매매건수', '해제제외건수',
   '전세가(억)', '전세가(원)', '전세계약일', '전세전용면적', '전세층', '전세계약구분', '전세조회기간', '전세건수',
-  '전세가율(%)', '상태', '검증사유', '출처',
+  '전세가율(%)', '상태', '매칭검증사유', '거래주의사유', '출처',
 ]
 
 export function selectLandmarks(all, args) {
@@ -328,7 +354,7 @@ async function main() {
     now,
     log,
   })
-  for (const r of results) r.row.검증사유 = scrub(r.row.검증사유 ?? '')
+  for (const r of results) r.row.매칭검증사유 = scrub(r.row.매칭검증사유 ?? '')
 
   const files = {
     summary: join(outDir, `molit-summary-${stamp}.csv`),
@@ -344,7 +370,7 @@ async function main() {
   const count = (st) => results.filter((r) => r.row.상태 === st).length
   log('')
   log(`실제 API 호출 ${stats.requests}회 · 캐시 사용 ${stats.cacheHits}개월분`)
-  log(`정상 ${count('정상')} · 검증 필요 ${count('검증 필요')} · 일부 거래 없음 ${count('일부 거래 없음')} · 거래 없음 ${count('거래 없음')} · 단지명 확인 필요 ${count('단지명 확인 필요')} · 지역코드 확인 필요 ${count('지역코드 확인 필요')} · 오류 ${count('오류')} · 중단 ${count('중단')}`)
+  log(`정상 ${count('정상')} · 거래 시점 주의 ${count('거래 시점 주의')} · 검증 필요 ${count('검증 필요')} · 일부 거래 없음 ${count('일부 거래 없음')} · 거래 없음 ${count('거래 없음')} · 단지명 확인 필요 ${count('단지명 확인 필요')} · 지역코드 확인 필요 ${count('지역코드 확인 필요')} · 오류 ${count('오류')} · 중단 ${count('중단')}`)
   if (fatal) log(`⚠ 일괄 조회를 멈췄습니다: ${scrub(fatal)} (한도 초과면 내일 다시 실행하세요. 받은 달은 캐시에 남아 다시 호출하지 않습니다)`)
   log(`요약 CSV: ${files.summary}`)
   log(`상세 거래 CSV: ${files.trades}`)

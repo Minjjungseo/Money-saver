@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { areaBand, jeonseRatio, matchName, normName, pickLatestJeonse, pickLatestSale, similarNames } from './match.mjs'
+import { areaClusters, chooseAreaType, jeonseRatio, matchName, normName, pickLatestJeonse, pickLatestSale, similarNames, typeWindow } from './match.mjs'
 
 const it_ = (aptName, dong = null) => ({ aptName, dong })
 
@@ -25,12 +25,45 @@ describe('단지명 매칭', () => {
   })
 })
 
-describe('면적 기준', () => {
-  it('33~35평만 전용 84㎡대를 확실한 기준으로 쓴다', () => {
-    expect(areaBand({ pyeong: 34 })).toMatchObject({ min: 83, max: 86, certain: true })
-    expect(areaBand({ pyeong: 32 }).certain).toBe(false)
-    expect(areaBand({ pyeongLabel: '35~37평' }).certain).toBe(false)
-    expect(areaBand({ pyeong: 32, areaMin: 84, areaMax: 85 })).toMatchObject({ min: 84, max: 85, certain: true })
+describe('면적 타입', () => {
+  const a = (...areas) => areas.map((area) => ({ area }))
+  it('1㎡ 이내로 이어지는 면적은 같은 타입, 그 밖은 다른 타입', () => {
+    expect(areaClusters(a(84.95, 84.97, 84.99, 59.9, 114.2, 84.99)).map((c) => [c.min, c.max, c.count])).toEqual([
+      [84.95, 84.99, 4],
+      [59.9, 59.9, 1],
+      [114.2, 114.2, 1],
+    ])
+  })
+  it('평형 후보 범위 안에 타입이 하나면 그 타입만 (확실)', () => {
+    const r = chooseAreaType({ pyeong: 34 }, a(59.9, 84.97, 84.99, 114.2))
+    expect(r).toMatchObject({ band: { min: 84.97, max: 84.99 }, certain: true })
+  })
+  it('옛 단지 35평 = 전용 95㎡ 처럼 84가 아닌 경우도 실제 거래 타입으로 잡는다', () => {
+    expect(chooseAreaType({ pyeong: 35 }, a(65.08, 95.03, 95.03, 115.7))).toMatchObject({ band: { min: 95.03, max: 95.03 }, certain: true })
+  })
+  it('후보 타입이 여러 개면 하나만 고르되 확실하지 않음(검증 필요)', () => {
+    const r = chooseAreaType({ pyeong: 35 }, a(84.9, 84.9, 95.5, 95.5))
+    expect(r.certain).toBe(false)
+    expect(r.band).toEqual({ min: 84.9, max: 84.9 })
+    expect(r.label).toMatch(/타입 2개/)
+  })
+  it('평형 범위 표기·평형 없음은 항상 불확실, 직접 지정은 확실', () => {
+    expect(chooseAreaType({ pyeongLabel: '35~37평' }, a(84.9)).certain).toBe(false)
+    expect(chooseAreaType({}, a(84.9)).certain).toBe(false)
+    expect(chooseAreaType({ pyeong: 32, areaMin: 84, areaMax: 85 }, a(59, 84.5))).toMatchObject({ band: { min: 84, max: 85 }, certain: true })
+    expect(typeWindow({ pyeong: 34 })).toMatchObject({ min: 78.7, max: 96.7 })
+  })
+})
+
+describe('단지명 변형', () => {
+  it('세종처럼 API에 마을·괄호 브랜드가 붙어도 exact', () => {
+    expect(matchName({ name: '새뜸10단지더샵힐스테이트' }, [it_('새뜸마을10단지(더샵힐스테이트)'), it_('새뜸마을11단지')])).toEqual({
+      level: 'exact',
+      names: ['새뜸마을10단지(더샵힐스테이트)'],
+    })
+  })
+  it('apiNames 를 적으면 그 이름만 쓴다', () => {
+    expect(matchName({ name: '해운대자이2차', apiNames: ['해운대자이2단지'] }, [it_('해운대자이2단지'), it_('해운대자이2차')])).toEqual({ level: 'alias', names: ['해운대자이2단지'] })
   })
 })
 

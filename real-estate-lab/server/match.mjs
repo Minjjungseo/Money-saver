@@ -7,15 +7,14 @@
  *  - 'partial' : 한쪽 이름이 다른 쪽에 포함됨 → 검증 필요
  *  - 'none'    : 일치 없음
  * 전용면적
- *  - 시트는 평형(공급면적)만 있으므로 33~35평 → 전용 84㎡대(83~86㎡)로 본다(표준 매칭).
- *  - 그 밖의 평형은 범위를 넓게 잡고 '검증 필요'.
+ *  - 시트는 평형(공급면적)만 있으므로, 평형으로 '있을 수 있는' 범위를 잡고
+ *    실제 거래의 전용면적 타입 중 하나만 고른다(서로 다른 타입을 섞지 않음).
  *  - landmarks.json 에 areaMin/areaMax 를 직접 적으면 그 범위를 확실한 기준으로 쓴다.
  */
 
 const LETTERS = [
   [/sk/g, '에스케이'],
   [/ipark/g, '아이파크'],
-  [/e편한세상/g, 'e편한세상'],
   [/dmc/g, '디엠씨'],
   [/the/g, '더'],
   [/xi/g, '자이'],
@@ -24,14 +23,43 @@ const LETTERS = [
   [/lh/g, '엘에이치'],
 ]
 
-/** 비교용 단지명 정규화 */
+/** 비교용 단지명 정규화 (괄호 안 내용 제거) */
 export function normName(s) {
+  return baseNorm(String(s ?? '').replace(/\(.*?\)/g, ''))
+}
+
+function baseNorm(s) {
   let t = String(s ?? '').toLowerCase()
-  t = t.replace(/\(.*?\)/g, '') // 괄호 내용(블록·평형 등) 제거
   t = t.replace(/아파트|apt/g, '')
-  t = t.replace(/[\s·.,\-_'"]/g, '')
+  t = t.replace(/[\s·.,\-_'"()[\]]/g, '')
   for (const [re, to] of LETTERS) t = t.replace(re, to)
   return t
+}
+
+/**
+ * 한 이름의 비교 키들.
+ *  - 괄호 내용 제거: "송도더샵퍼스트파크(F13-1블록)" → 송도더샵퍼스트파크
+ *  - 괄호 내용 유지: "새뜸마을10단지(더샵힐스테이트)" → 새뜸마을10단지더샵힐스테이트
+ *  - 각각 '마을' 제거: 새뜸10단지더샵힐스테이트 (세종·분당처럼 API에만 '마을'이 붙는 경우)
+ */
+export function nameKeys(s) {
+  const keys = new Set()
+  for (const k of [normName(s), baseNorm(s)]) {
+    if (!k) continue
+    keys.add(k)
+    keys.add(k.replace(/마을/g, ''))
+  }
+  return [...keys].filter(Boolean)
+}
+
+const sameName = (a, b) => {
+  const kb = nameKeys(b)
+  return nameKeys(a).some((k) => kb.includes(k))
+}
+const containsName = (a, b) => {
+  const ka = nameKeys(a).filter((k) => k.length >= 3)
+  const kb = nameKeys(b).filter((k) => k.length >= 3)
+  return ka.some((x) => kb.some((y) => x.includes(y) || y.includes(x)))
 }
 
 /**
@@ -46,22 +74,16 @@ export function matchName(landmark, items) {
   for (const it of items) pairs.set(`${it.aptName}|${it.dong ?? ''}`, it)
   const list = [...pairs.values()]
   const uniq = (arr) => [...new Set(arr.map((x) => x.aptName))]
-  const aliases = (landmark.apiNames ?? []).map(normName)
-  const target = normName(landmark.name)
-  const aliasHits = list.filter((x) => aliases.includes(normName(x.aptName)))
-  if (aliasHits.length) return { level: 'alias', names: uniq(aliasHits) }
-  const dongPrefix = /^(\S+동)\s+(.+)$/.exec(String(landmark.name).trim())
-  const exact = list.filter(
-    (x) => normName(x.aptName) === target || (dongPrefix && x.dong === dongPrefix[1] && normName(x.aptName) === normName(dongPrefix[2])),
-  )
-  if (exact.length) return { level: 'exact', names: uniq(exact) }
-  if (target.length >= 3) {
-    const partial = list.filter((x) => {
-      const a = normName(x.aptName)
-      return a.length >= 3 && (a.includes(target) || target.includes(a))
-    })
-    if (partial.length) return { level: 'partial', names: uniq(partial) }
+  // apiNames 를 적었으면 그 이름만 쓴다 (사용자가 확인한 이름이 가장 확실)
+  if (landmark.apiNames?.length) {
+    const hits = list.filter((x) => landmark.apiNames.some((a) => baseNorm(a) === baseNorm(x.aptName)))
+    return hits.length ? { level: 'alias', names: uniq(hits) } : { level: 'none', names: [] }
   }
+  const dongPrefix = /^(\S+동)\s+(.+)$/.exec(String(landmark.name).trim())
+  const exact = list.filter((x) => sameName(landmark.name, x.aptName) || (dongPrefix && x.dong === dongPrefix[1] && sameName(dongPrefix[2], x.aptName)))
+  if (exact.length) return { level: 'exact', names: uniq(exact) }
+  const partial = list.filter((x) => containsName(landmark.name, x.aptName))
+  if (partial.length) return { level: 'partial', names: uniq(partial) }
   return { level: 'none', names: [] }
 }
 
@@ -79,30 +101,89 @@ function lcs(a, b) {
 
 /** 단지명을 못 찾았을 때 검토용으로 보여 줄 비슷한 API 단지명 (최대 n개) */
 export function similarNames(landmarkName, apiNames, n = 5) {
-  const t = normName(landmarkName)
+  const t = baseNorm(landmarkName)
   return [...new Set(apiNames)]
-    .map((x) => ({ x, s: lcs(t, normName(x)) }))
+    .map((x) => ({ x, s: lcs(t, baseNorm(x)) }))
     .filter((v) => v.s >= 3)
     .sort((a, b) => b.s - a.s)
     .slice(0, n)
     .map((v) => v.x)
 }
 
+const PY = 3.3058 // 1평 = 3.3058㎡
+/** 공급면적 대비 전용면적 비율로 볼 수 있는 범위 (신축 계단식 약 0.75, 1980~90년대 단지 약 0.80~0.85) */
+export const EXCLUSIVE_RATIO = [0.7, 0.86]
+
 /**
- * 비교할 전용면적 범위
- * @returns {{ min: number, max: number, certain: boolean, label: string }}
+ * 시트 평형(공급면적 기준)으로 '있을 수 있는' 전용면적 범위.
+ * 이 범위는 후보를 고르는 데만 쓰고, 실제 비교는 그 안의 전용면적 타입 하나(클러스터)로만 한다.
+ * @returns {{ min: number, max: number, override: boolean, label: string }}
  */
-export function areaBand(landmark) {
+export function typeWindow(landmark) {
   if (landmark.areaMin != null && landmark.areaMax != null) {
-    return { min: landmark.areaMin, max: landmark.areaMax, certain: true, label: `전용 ${landmark.areaMin}~${landmark.areaMax}㎡ (직접 지정)` }
+    return { min: landmark.areaMin, max: landmark.areaMax, override: true, label: `전용 ${landmark.areaMin}~${landmark.areaMax}㎡ (landmarks.json 직접 지정)` }
   }
-  const p = landmark.pyeong
-  if (p != null && p >= 33 && p <= 35) return { min: 83, max: 86, certain: true, label: `시트 ${p}평 → 전용 84㎡대(83~86㎡)` }
-  if (p === 32) return { min: 74, max: 86, certain: false, label: '시트 32평 → 전용 74~86㎡ (평형 기준이 단지마다 달라 확인 필요)' }
-  if (p != null && p >= 36 && p <= 37) return { min: 83, max: 100, certain: false, label: `시트 ${p}평 → 전용 83~100㎡ (확인 필요)` }
-  if (p != null && p >= 30 && p <= 31) return { min: 59, max: 86, certain: false, label: `시트 ${p}평 → 전용 59~86㎡ (확인 필요)` }
-  if (landmark.pyeongLabel) return { min: 83, max: 100, certain: false, label: `시트 ${landmark.pyeongLabel} → 전용 83~100㎡ (확인 필요)` }
-  return { min: 59, max: 135, certain: false, label: '시트에 평형 정보 없음 → 전 면적 (확인 필요)' }
+  let lo = landmark.pyeong
+  let hi = landmark.pyeong
+  const range = /([\d.]+)\s*~\s*([\d.]+)/.exec(landmark.pyeongLabel ?? '')
+  if (range) [lo, hi] = [Number(range[1]), Number(range[2])]
+  if (lo == null) return { min: 0, max: 400, override: false, label: '시트에 평형 없음 → 전 면적 후보' }
+  const r = (v) => Math.round(v * 10) / 10
+  return {
+    min: r(lo * PY * EXCLUSIVE_RATIO[0]),
+    max: r(hi * PY * EXCLUSIVE_RATIO[1]),
+    override: false,
+    label: `시트 ${range ? landmark.pyeongLabel : `${lo}평`} → 전용 ${r(lo * PY * EXCLUSIVE_RATIO[0])}~${r(hi * PY * EXCLUSIVE_RATIO[1])}㎡ 후보`,
+  }
+}
+
+/**
+ * 거래들의 전용면적을 타입(클러스터)으로 묶는다. 서로 1㎡ 이내로 이어지는 면적은 같은 타입(예: 84.95/84.97/84.99 = 84㎡대).
+ * @returns {{ min: number, max: number, count: number, areas: number[] }[]}  거래 많은 순
+ */
+export function areaClusters(items) {
+  const areas = items.map((it) => it.area).filter((a) => a != null && Number.isFinite(a)).sort((a, b) => a - b)
+  const out = []
+  for (const a of areas) {
+    const last = out[out.length - 1]
+    if (last && a - last.max <= 1) {
+      last.max = a
+      last.count++
+      if (!last.areas.includes(a)) last.areas.push(a)
+    } else out.push({ min: a, max: a, count: 1, areas: [a] })
+  }
+  return out.sort((x, y) => y.count - x.count)
+}
+
+export const clusterLabel = (c) => `${c.min === c.max ? c.min : `${c.min}~${c.max}`}㎡(${c.count}건)`
+
+/**
+ * 비교할 전용면적 타입 하나를 고른다. 섞지 않는다.
+ *  - landmarks.json 에 areaMin/areaMax 가 있으면 그 범위 (확실)
+ *  - 평형 후보 범위 안에 타입이 하나뿐이면 그 타입 (확실)
+ *  - 여러 개면 평형에 가장 가까운 타입을 고르되 '검증 필요' (어느 타입인지 사람이 확인해야 함)
+ * @returns {{ band: {min:number,max:number}|null, certain: boolean, label: string, candidates: string }}
+ */
+export function chooseAreaType(landmark, items) {
+  const w = typeWindow(landmark)
+  const all = areaClusters(items)
+  const candidates = all.map(clusterLabel).join(', ')
+  if (w.override) return { band: { min: w.min, max: w.max }, certain: true, label: w.label, candidates }
+  const inWin = all.filter((c) => c.max >= w.min && c.min <= w.max)
+  if (inWin.length === 0) return { band: null, certain: false, label: `${w.label}에 해당하는 거래 타입 없음`, candidates }
+  if (inWin.length === 1 && landmark.pyeong != null) {
+    const c = inWin[0]
+    return { band: { min: c.min, max: c.max }, certain: true, label: `${w.label} 중 유일한 타입 ${clusterLabel(c)}`, candidates }
+  }
+  // 여러 타입: 평형 공급면적 × 0.76(요즘 단지 전용률) 에 가장 가까운 타입 (추정이므로 확실하지 않음)
+  const mid = landmark.pyeong != null ? landmark.pyeong * PY * 0.76 : null
+  const pick = mid == null ? inWin[0] : [...inWin].sort((a, b) => Math.abs((a.min + a.max) / 2 - mid) - Math.abs((b.min + b.max) / 2 - mid))[0]
+  return {
+    band: { min: pick.min, max: pick.max },
+    certain: false,
+    label: `${w.label}에 타입 ${inWin.length}개(${inWin.map(clusterLabel).join(', ')}) → ${clusterLabel(pick)} 임시 선택`,
+    candidates,
+  }
 }
 
 const byDateDesc = (a, b) => (b.contractDate ?? '').localeCompare(a.contractDate ?? '') || (b.floor ?? 0) - (a.floor ?? 0)

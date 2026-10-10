@@ -32,8 +32,11 @@ describe('매매·전세 독립 조회', () => {
     expect(f.calls.filter((c) => c.startsWith('sale'))).toHaveLength(6)
     expect(f.calls.filter((c) => c.startsWith('rent'))).toHaveLength(24)
     expect(row).toMatchObject({ '매매가(억)': 50, 매매계약일: '2026-09-10', 매매조회기간: '최근 6개월', '전세가(억)': 16, 전세조회기간: '최근 24개월', '전세가율(%)': 32 })
-    expect(row.상태).toBe('검증 필요')
-    expect(row.검증사유).toMatch(/계약일 차이/)
+    // 매칭은 확실하고 거래 시점만 문제 → 검증 필요가 아니라 거래 시점 주의
+    expect(row.상태).toBe('거래 시점 주의')
+    expect(row.매칭검증사유).toBe('')
+    expect(row.거래주의사유).toMatch(/전세가 23개월 전 거래/)
+    expect(row.거래주의사유).toMatch(/계약일 차이/)
   })
 
   it('해제 거래 제외 · 정상 판정 · 앱 가져오기 CSV', async () => {
@@ -61,10 +64,34 @@ describe('매매·전세 독립 조회', () => {
     expect(row['매매가(억)']).toBeNull()
   })
 
-  it('응답 지역코드가 다르면 지역코드 확인 필요', async () => {
-    const f = fakeFetcher({ 'sale-202609': [{ ...sale('202609', '10', 5e9), sggCd: '11680' }] })
+  it('응답 지역코드 대부분이 다르면 지역코드 확인 필요, 한 건만 다르면 무시', async () => {
+    const wrong = async (kind, lawd, ym) => ({ items: [{ ...sale(ym, '01', 1e9), sggCd: '11680' }] })
+    expect((await lookupLandmark(lm, { getMonth: wrong, now: NOW })).row.상태).toBe('지역코드 확인 필요')
+    const f = fakeFetcher({ 'sale-202609': [{ ...sale('202609', '10', 5e9), sggCd: '11680' }], 'rent-202609': [rent('202609', '18', 1.6e9)] })
+    expect((await lookupLandmark(lm, { getMonth: f, now: NOW })).row.상태).not.toBe('지역코드 확인 필요')
+  })
+
+  it('다른 면적 타입 거래는 섞지 않는다 (평형 후보 안에 타입 2개 → 검증 필요)', async () => {
+    const f = fakeFetcher({
+      'sale-202609': [sale('202609', '20', 7e9, { area: 95.5 }), sale('202609', '10', 5e9)],
+      'rent-202609': [rent('202609', '18', 1.6e9), rent('202609', '19', 2.4e9, { area: 95.5 })],
+    })
+    const { row, trades } = await lookupLandmark({ ...lm, pyeong: 35 }, { getMonth: f, now: NOW })
+    expect(row.상태).toBe('검증 필요')
+    expect(row.매칭검증사유).toMatch(/면적 타입 불확실/)
+    expect(new Set(trades.map((t) => t.전용면적))).toEqual(new Set([row.매매전용면적]))
+    expect(row.면적후보).toMatch(/95.5/)
+  })
+
+  it('블록이 나뉜 단지는 합산하고 블록구분에 적는다', async () => {
+    const f = fakeFetcher({
+      'sale-202609': [sale('202609', '10', 5e9, { aptName: '테스트단지(A1블록)', buildYear: 2017 }), sale('202609', '11', 5.1e9, { aptName: '테스트단지(A2블록)', buildYear: 2017 })],
+      'rent-202609': [rent('202609', '18', 1.6e9, { aptName: '테스트단지(A1블록)', buildYear: 2017 })],
+    })
     const { row } = await lookupLandmark(lm, { getMonth: f, now: NOW })
-    expect(row.상태).toBe('지역코드 확인 필요')
+    expect(row.블록구분).toMatch(/2개 합산/)
+    expect(row.상태).toBe('정상')
+    expect(row.매매계약일).toBe('2026-09-11')
   })
 
   it('지역코드 없는 단지는 호출하지 않는다', async () => {
