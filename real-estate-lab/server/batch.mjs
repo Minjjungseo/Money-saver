@@ -88,7 +88,7 @@ export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
     row.상태 = '지역코드 확인 필요'
     row.매칭검증사유 = regionAll.length
       ? `요청 ${lm.lawdCd} / 응답 지역코드 대부분 ${others}`
-      : `지역코드 ${lm.lawdCd} 로 24개월간 이 시군구 전체 거래가 0건 (코드 확인 필요)`
+      : `지역코드 ${lm.lawdCd} 로 24개월간 이 시군구 전체 거래가 0건 → npm run molit:probe -- --lawd ${lm.lawdCd} 로 응답 원문 확인`
     return { row, trades: [] }
   }
 
@@ -178,6 +178,9 @@ export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
   const missing = []
   if (!s.latest) missing.push('매매 거래 없음(24개월)')
   if (!j.latest) missing.push('전세 거래 없음(24개월)')
+  const hasOverride = (lm.apiNames?.length ?? 0) > 0 || lm.areaMin != null || lm.areaMax != null
+  if (hasOverride && !lm.verified?.source) match.push('landmarks.json 직접 지정 값에 확인 출처(verified.source)가 없음')
+  if (lm.checkNote) match.push(`확인할 것: ${lm.checkNote}`)
   row.매칭검증사유 = match.join(' / ')
   row.거래주의사유 = [...caution, ...missing].join(' / ')
   if (!s.latest && !j.latest) row.상태 = '거래 없음'

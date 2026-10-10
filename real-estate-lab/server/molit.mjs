@@ -99,6 +99,9 @@ export function normalizeItem(kind, o) {
     floor: pick(o, 'floor', '층') != null ? Number(pick(o, 'floor', '층')) : null,
     buildYear: pick(o, 'buildYear', '건축년도') != null ? Number(pick(o, 'buildYear', '건축년도')) : null,
     contractDate: y && mo && d ? `${y}-${pad(mo)}-${pad(d)}` : null,
+    // 단지 식별 보조 (응답에 있을 때만): 단지 일련번호, 도로명
+    aptSeq: pick(o, 'aptSeq', '단지일련번호'),
+    roadNm: pick(o, 'roadNm', '도로명'),
   }
   if (kind === 'sale') {
     const cancel = pick(o, 'cdealType', '해제여부')
@@ -179,8 +182,11 @@ async function requestPage(url, { retries = 3, baseDelayMs = 1000 } = {}) {
  */
 export async function fetchMonth(kind, lawdCd, ym, serviceKey, { useCache = true, retries = 3, baseDelayMs = 1000, cacheDir = join(ROOT, 'server', '.cache') } = {}) {
   const cacheFile = join(cacheDir, `${kind}-${lawdCd}-${ym}.json`)
-  if (useCache && existsSync(cacheFile) && Date.now() - statSync(cacheFile).mtimeMs < cacheMaxAgeMs(ym)) {
-    return { ...JSON.parse(readFileSync(cacheFile, 'utf8')), fromCache: true, requests: 0 }
+  if (useCache && existsSync(cacheFile)) {
+    const cached = JSON.parse(readFileSync(cacheFile, 'utf8'))
+    // 0건 응답은 일시 장애일 수 있으므로 1시간만 믿는다 (0건이 그대로 며칠씩 남지 않게)
+    const maxAge = cached.items.length === 0 ? Math.min(3600_000, cacheMaxAgeMs(ym)) : cacheMaxAgeMs(ym)
+    if (Date.now() - statSync(cacheFile).mtimeMs < maxAge) return { ...cached, fromCache: true, requests: 0 }
   }
   const all = []
   let total = Infinity

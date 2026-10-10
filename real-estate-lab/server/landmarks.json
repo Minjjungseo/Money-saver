@@ -99,7 +99,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "11470",
-   "top20": 7
+   "top20": 7,
+   "checkNote": "API 단지명 '목동신시가지5'의 지번·준공연도를 건축물대장과 대조해 같은 단지인지, 시트 35평(공급)이 건축물대장 전유부 기준 전용 몇 ㎡ 타입인지 확인 후 apiNames·areaMin/areaMax·verified 기입 (현재 83.47㎡는 임시 선택)"
   },
   {
    "key": "서울/마포구|마포프레스티지자이(34\")",
@@ -533,7 +534,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "41117",
-   "top20": 11
+   "top20": 11,
+   "checkNote": "입주자모집공고(2015) 공급내역표에서 공급면적 약 115.7㎡(35평)에 해당하는 주택형이 전용 84.9㎡인지 98.9㎡인지 확인 후 areaMin/areaMax·verified 기입"
   },
   {
    "key": "경기/안양시/만안구|래미안안양메가트리아(34\")",
@@ -953,7 +955,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "28185",
-   "top20": 12
+   "top20": 12,
+   "checkNote": "F13-1/F14/F15 블록을 합산할지, 한 블록만 볼지 정하기(블록별 주소·세대수는 입주자모집공고·건축물대장으로 확인). 정한 블록의 API 단지명만 apiNames 에 적고, 35평 해당 전용면적을 공고 공급내역표로 확인 후 areaMin/areaMax·verified 기입"
   },
   {
    "key": "인천/서해구|한양수자인레이크블루(34\")",
@@ -1065,7 +1068,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "26350",
-   "top20": 13
+   "top20": 13,
+   "checkNote": "해운대자이2차는 1단지·2단지로 나뉜 재개발 단지로 알려져 있으나 공식 자료 미확인. 건축물대장(우동, 2018년 사용승인)으로 두 API 단지명이 같은 사업(해운대자이2차)인지 확인. 2013년 준공 '해운대자이 2단지'(해운대자이 1차)는 다른 단지이므로 섞이면 안 됨"
   },
   {
    "key": "부산/해운대구|트럼프월드센텀I(주복)",
@@ -1093,7 +1097,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "26500",
-   "top20": 14
+   "top20": 14,
+   "checkNote": "API '쌍용예가디오션'의 법정동(광안동)·지번·준공연도를 건축물대장과 대조해 같은 단지인지 확인 후 apiNames·verified 기입"
   },
   {
    "key": "부산/동래구|롯데캐슬더클래식(33\")",
@@ -1513,7 +1518,8 @@
    "isLandmark": true,
    "regionNote": null,
    "lawdCd": "29155",
-   "top20": 17
+   "top20": 17,
+   "checkNote": "지역코드 29155(광주 남구)로 거래 0건 → npm run molit:probe -- --lawd 29155 --compare 29140 로 응답 원문 확인"
   },
   {
    "key": "광주/광산구|수완대방노블랜드6차(34\")",

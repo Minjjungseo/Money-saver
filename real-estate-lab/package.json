@@ -13,6 +13,8 @@
     "molit:test": "node server/test-landmark.mjs",
     "molit:server": "node server/proxy.mjs",
     "molit:batch": "node server/batch.mjs",
+    "molit:review": "node server/review.mjs",
+    "molit:probe": "node server/probe.mjs",
     "molit:landmarks": "esbuild scripts/build-landmarks.ts --bundle --platform=node --format=esm --packages=external --tsconfig=tsconfig.app.json --log-level=warning --outfile=server/.cache/build-landmarks.mjs && node server/.cache/build-landmarks.mjs"
   },
   "dependencies": {

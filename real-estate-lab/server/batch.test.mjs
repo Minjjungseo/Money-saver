@@ -158,9 +158,55 @@ describe('fetchMonth 재시도·캐시 (로컬 테스트 서버, 가짜 응답)'
     expect(hits).toBe(1)
   })
 
+  it('0건 응답 캐시는 1시간만 믿는다', async () => {
+    const { writeFileSync, utimesSync } = await import('node:fs')
+    const f = join(dir, 'sale-29155-202501.json')
+    writeFileSync(f, JSON.stringify({ items: [] }))
+    const old = (Date.now() - 2 * 3600_000) / 1000
+    utimesSync(f, old, old)
+    mode = 'ok'
+    hits = 0
+    const r = await molit.fetchMonth('sale', '29155', '202501', 'k', { baseDelayMs: 1, cacheDir: dir })
+    expect(r.fromCache).toBe(false)
+    expect(hits).toBe(1)
+  })
+
   it('캐시 기간: 이번 달 6시간 · 최근 3개월 하루 · 그 전 7일', () => {
     expect(molit.cacheMaxAgeMs('202610', NOW)).toBe(6 * 3600_000)
     expect(molit.cacheMaxAgeMs('202608', NOW)).toBe(24 * 3600_000)
     expect(molit.cacheMaxAgeMs('202601', NOW)).toBe(7 * 24 * 3600_000)
+  })
+})
+
+describe('검증 규칙', () => {
+  const f = () =>
+    fakeFetcher({ 'sale-202609': [sale('202609', '10', 5e9, { aptName: '테스트' })], 'rent-202609': [rent('202609', '18', 1.6e9, { aptName: '테스트' })] })
+  it('직접 지정 값(apiNames)에 확인 출처가 없으면 정상이 아니라 검증 필요', async () => {
+    const { row } = await lookupLandmark({ ...lm, apiNames: ['테스트'] }, { getMonth: f(), now: NOW })
+    expect(row.상태).toBe('검증 필요')
+    expect(row.매칭검증사유).toMatch(/verified/)
+    const ok = await lookupLandmark({ ...lm, apiNames: ['테스트'], verified: { source: '건축물대장 2026-10-11' } }, { getMonth: f(), now: NOW })
+    expect(ok.row.상태).toBe('정상')
+  })
+  it('checkNote 가 있으면 검증 필요로 남는다', async () => {
+    const { row } = await lookupLandmark({ ...lm, checkNote: '면적 확인' }, { getMonth: fakeFetcher({ 'sale-202609': [sale('202609', '10', 5e9)], 'rent-202609': [rent('202609', '18', 1.6e9)] }), now: NOW })
+    expect(row.상태).toBe('검증 필요')
+    expect(row.매칭검증사유).toMatch(/확인할 것: 면적 확인/)
+  })
+})
+
+describe('검토 리포트 (캐시만 읽음)', () => {
+  it('매칭 이름과 비슷한 이름을 타입별로 보여 준다', async () => {
+    const { reviewLandmark } = await import('./review.mjs')
+    const items = [
+      { ...sale('202609', '10', 5e9, { aptName: '해운대자이2차1단지', buildYear: 2018, jibun: '1' }), kind: 'sale' },
+      { ...sale('202609', '11', 3e9, { aptName: '해운대자이2단지', buildYear: 2013, area: 59.9 }), kind: 'sale' },
+      { ...rent('202609', '12', 2e9, { aptName: '롯데캐슬' }), kind: 'rent' },
+    ]
+    const { rows } = reviewLandmark({ name: '해운대자이2차', pyeong: 33, lawdCd: '26350' }, items)
+    expect(rows.map((r) => [r.API단지명, r.현재매칭, r.준공연도])).toEqual([
+      ['해운대자이2단지', '', '2013'],
+      ['해운대자이2차1단지', 'partial', '2018'],
+    ])
   })
 })
