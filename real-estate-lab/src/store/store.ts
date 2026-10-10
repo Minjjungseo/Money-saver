@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import type { AppData } from './schema'
-import { loadData, saveData, saveUndo, STORAGE_KEY } from './storage'
+import { getStorage, loadData, saveData, saveUndo, STORAGE_KEY } from './storage'
 
+/** 'local' = 브라우저에 저장됨, 'memory' = 저장소를 쓸 수 없는 환경(창을 닫으면 사라짐) */
+export const storageMode: 'local' | 'memory' = getStorage() ? 'local' : 'memory'
 const initial = loadData()
 let state: AppData = initial.data
 export const loadWarning = initial.warning
@@ -22,12 +24,15 @@ export function getData(): AppData {
 export function update(fn: (d: AppData) => AppData, opts?: { undoLabel?: string }): void {
   const next = fn(state)
   if (next === state) return
-  if (opts?.undoLabel) saveUndo(state, opts.undoLabel)
-  try {
-    saveData(next)
-  } catch (e) {
-    alert('저장에 실패했습니다. 브라우저 저장 공간을 확인하고, 백업 파일을 먼저 내려받아 주세요.')
-    throw e
+  if (storageMode === 'local') {
+    if (opts?.undoLabel) saveUndo(state, opts.undoLabel)
+    try {
+      saveData(next)
+    } catch {
+      // 저장 실패 시 화면 상태도 바꾸지 않는다 (새로고침 후 사라진 줄 모르는 일이 없도록)
+      alert('저장에 실패했습니다. 브라우저 저장 공간을 확인하고, 백업 파일을 먼저 내려받아 주세요.')
+      return
+    }
   }
   state = next
   emit()

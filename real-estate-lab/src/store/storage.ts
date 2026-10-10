@@ -53,15 +53,42 @@ export interface LoadResult {
   warning: string | null
 }
 
-export function loadData(storage: Storage = localStorage): LoadResult {
-  const raw = storage.getItem(STORAGE_KEY)
+/**
+ * 브라우저 저장소를 안전하게 얻는다. 미리보기 창(샌드박스)처럼 저장소 접근 자체가 막힌 환경에서는 null.
+ * localStorage 에 접근만 해도 예외가 나는 환경이 있어 반드시 이 함수를 거친다.
+ */
+export function getStorage(): Storage | null {
+  try {
+    const s = globalThis.localStorage
+    if (!s) return null
+    const probe = '__mrel_probe__'
+    s.setItem(probe, '1')
+    s.removeItem(probe)
+    return s
+  } catch {
+    return null
+  }
+}
+
+export function loadData(storage: Storage | null = getStorage()): LoadResult {
+  if (!storage) return { data: emptyData(), warning: null }
+  let raw: string | null
+  try {
+    raw = storage.getItem(STORAGE_KEY)
+  } catch {
+    return { data: emptyData(), warning: '브라우저 저장소를 읽지 못했습니다.' }
+  }
   if (raw == null) return { data: emptyData(), warning: null }
   try {
     return { data: normalize(JSON.parse(raw)), warning: null }
   } catch {
     // 손상된 원본을 덮어쓰지 않도록 다른 키로 옮겨 둔다
     const keep = `mrel:corrupt:${Date.now()}`
-    storage.setItem(keep, raw)
+    try {
+      storage.setItem(keep, raw)
+    } catch {
+      /* 보관 실패해도 원본 키는 그대로 남아 있다 (아래에서 덮어쓰지 않음) */
+    }
     return {
       data: emptyData(),
       warning: `저장된 데이터를 읽지 못했습니다. 원본은 브라우저 저장소의 "${keep}" 키에 보관했습니다.`,
@@ -69,22 +96,24 @@ export function loadData(storage: Storage = localStorage): LoadResult {
   }
 }
 
-export function saveData(data: AppData, storage: Storage = localStorage): void {
+/** 저장. 실패하면 예외를 던진다 (호출하는 쪽에서 화면 상태를 바꾸지 않도록) */
+export function saveData(data: AppData, storage: Storage | null = getStorage()): void {
+  if (!storage) throw new Error('브라우저 저장소를 쓸 수 없습니다')
   storage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
-export function saveUndo(data: AppData, label: string, storage: Storage = localStorage): void {
+export function saveUndo(data: AppData, label: string, storage: Storage | null = getStorage()): void {
   try {
-    storage.setItem(UNDO_KEY, JSON.stringify({ label, at: new Date().toISOString(), data }))
+    storage?.setItem(UNDO_KEY, JSON.stringify({ label, at: new Date().toISOString(), data }))
   } catch {
     // 용량 부족 등으로 실패해도 본 작업은 진행 (되돌리기만 불가)
   }
 }
 
-export function readUndo(storage: Storage = localStorage): { label: string; at: string; data: AppData } | null {
-  const raw = storage.getItem(UNDO_KEY)
-  if (!raw) return null
+export function readUndo(storage: Storage | null = getStorage()): { label: string; at: string; data: AppData } | null {
   try {
+    const raw = storage?.getItem(UNDO_KEY)
+    if (!raw) return null
     const v = JSON.parse(raw)
     return { label: v.label, at: v.at, data: normalize(v.data) }
   } catch {
@@ -92,6 +121,19 @@ export function readUndo(storage: Storage = localStorage): { label: string; at: 
   }
 }
 
-export function clearUndo(storage: Storage = localStorage): void {
-  storage.removeItem(UNDO_KEY)
+export function clearUndo(storage: Storage | null = getStorage()): void {
+  try {
+    storage?.removeItem(UNDO_KEY)
+  } catch {
+    /* 무시 */
+  }
+}
+
+/** 저장된 데이터 크기(바이트, 대략). 읽을 수 없으면 0 */
+export function storedBytes(storage: Storage | null = getStorage()): number {
+  try {
+    return (storage?.getItem(STORAGE_KEY) ?? '').length * 2
+  } catch {
+    return 0
+  }
 }

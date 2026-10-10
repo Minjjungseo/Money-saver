@@ -18,15 +18,22 @@ export function getKakaoKey(): string {
   try {
     return localStorage.getItem(KEY_STORAGE) || (import.meta.env.VITE_KAKAO_JS_KEY as string | undefined) || ''
   } catch {
-    return (import.meta.env.VITE_KAKAO_JS_KEY as string | undefined) || ''
+    return memoryKey || (import.meta.env.VITE_KAKAO_JS_KEY as string | undefined) || ''
   }
 }
 
 export function setKakaoKey(key: string): void {
-  if (key.trim()) localStorage.setItem(KEY_STORAGE, key.trim())
-  else localStorage.removeItem(KEY_STORAGE)
+  try {
+    if (key.trim()) localStorage.setItem(KEY_STORAGE, key.trim())
+    else localStorage.removeItem(KEY_STORAGE)
+  } catch {
+    /* 저장소를 쓸 수 없는 환경: 이번 창에서만 사용 */
+    memoryKey = key.trim()
+  }
   loading = null
 }
+
+let memoryKey = ''
 
 let loading: Promise<any> | null = null
 

@@ -3,8 +3,9 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Building2, DatabaseBackup, GitCompareArrows, Group, Home, Lightbulb, Map as MapIcon, MapPinned, Menu, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hasSample } from '@/store/ops'
-import { loadWarning, useData } from '@/store/store'
+import { loadWarning, storageMode, useData } from '@/store/store'
 import { Toaster } from './toast'
+import { ErrorBoundary } from './ErrorBoundary'
 import { SampleBadge, Warn } from './bits'
 
 export const NAV = [
@@ -31,7 +32,11 @@ const MOBILE_NAV = [
 export function Layout() {
   const data = useData()
   const { pathname } = useLocation()
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  // 주의: 중괄호로 감싸 반환값을 버린다. 최신 브라우저는 scrollTo가 Promise를 반환하는데,
+  // 이를 그대로 반환하면 React가 정리 함수로 호출하다가 앱 전체가 멈춘다.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
   return (
     <div className="min-h-dvh lg:flex">
       <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r bg-card px-3 py-5 lg:flex">
@@ -61,6 +66,11 @@ export function Layout() {
           <Brand />
         </header>
         <main className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:pb-12 lg:pt-8">
+          {storageMode === 'memory' && (
+            <div className="mb-4">
+              <Warn>이 환경에서는 브라우저 저장소를 쓸 수 없어 입력 내용이 저장되지 않습니다(창을 닫으면 사라짐). 파일을 내려받아 크롬·엣지에서 직접 열어 주세요.</Warn>
+            </div>
+          )}
           {loadWarning && (
             <div className="mb-4">
               <Warn>{loadWarning}</Warn>
@@ -75,7 +85,10 @@ export function Layout() {
               </NavLink>
             </div>
           )}
-          <Outlet />
+          {/* 화면(경로)마다 오류를 따로 가둔다: 한 화면에서 오류가 나도 메뉴와 다른 화면은 그대로 동작 */}
+          <ErrorBoundary key={pathname} scope="page">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

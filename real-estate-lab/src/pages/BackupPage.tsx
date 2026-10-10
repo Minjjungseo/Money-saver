@@ -11,7 +11,7 @@ import { csvTemplate, downloadText, exportJSON, exportPricesCSV, importPricesCSV
 import { todayISO } from '@/lib/date'
 import { hasSample, removeSample } from '@/store/ops'
 import { getData, replaceAll, update, useData } from '@/store/store'
-import { readUndo, STORAGE_KEY } from '@/store/storage'
+import { readUndo, storedBytes } from '@/store/storage'
 import type { AppData } from '@/store/schema'
 
 type Pending =
@@ -27,7 +27,7 @@ export function BackupPage() {
   const [, force] = useState(0)
   const undo = readUndo()
   const stamp = todayISO()
-  const bytes = (localStorage.getItem(STORAGE_KEY) ?? '').length * 2
+  const bytes = storedBytes()
 
   async function onFile(f: File) {
     const text = await f.text()
