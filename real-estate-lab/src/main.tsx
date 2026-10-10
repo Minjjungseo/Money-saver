@@ -1,22 +1,20 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { HashRouter, MemoryRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { AppHashRouter } from './lib/hashRouter'
 
 /**
- * 보통은 주소 뒤 #/경로 방식(HashRouter). 미리보기 창처럼 주소가 about:srcdoc 인 환경에서는
- * 주소를 바꿀 수 없어 메모리 라우터로 대신한다 (새로고침하면 홈으로 돌아감).
+ * 주소 뒤 #/경로 방식. 메뉴 클릭 시 화면을 먼저(동기) 바꾸고 주소를 기록하는 명시적 라우터를 쓴다.
+ * file:// 로 연 단일 파일, 일반 웹 주소, 주소를 바꿀 수 없는 미리보기 창 모두 같은 코드로 동작한다.
  */
-const Router = typeof window !== 'undefined' && window.location.protocol === 'about:' ? MemoryRouter : HashRouter
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary scope="app">
-      <Router>
+      <AppHashRouter>
         <App />
-      </Router>
+      </AppHashRouter>
     </ErrorBoundary>
   </StrictMode>,
 )
