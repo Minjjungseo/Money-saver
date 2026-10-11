@@ -94,6 +94,15 @@ describe('매매·전세 독립 조회', () => {
     expect(row.매매계약일).toBe('2026-09-11')
   })
 
+  it('폐지된 광주 코드(29xxx)로 0건이면 2026.7.1 통합 안내를 붙인다', async () => {
+    const empty = async () => ({ items: [] })
+    const { row } = await lookupLandmark({ ...lm, lawdCd: '29155' }, { getMonth: empty, now: NOW })
+    expect(row.상태).toBe('지역코드 확인 필요')
+    expect(row.매칭검증사유).toMatch(/전남광주통합특별시/)
+    const seoul = await lookupLandmark(lm, { getMonth: empty, now: NOW })
+    expect(seoul.row.매칭검증사유).not.toMatch(/전남광주/)
+  })
+
   it('지역코드 없는 단지는 호출하지 않는다', async () => {
     const f = fakeFetcher({})
     const { row } = await lookupLandmark({ ...lm, lawdCd: null }, { getMonth: f, now: NOW })
