@@ -234,7 +234,7 @@ describe('봉선제일풍경채엘리트파크 (12270, 테스트용 가짜 거�
     const r = await lookupLandmark(bs, { getMonth: async (k, lawd, ym) => ({ items: (await f(k, lawd, ym)).items.map((it) => ({ ...it, sggCd: '12270' })) }), now: NOW })
     expect(r.row).toMatchObject({ 지역코드: '12270', API단지명: '봉선동제일풍경채엘리트파크', 단지매칭: '일치', '매매가(억)': 8, '전세가(억)': 5 })
     expect(r.row.상태).toBe('검증 필요')
-    expect(r.row.매칭검증사유).toMatch(/확인할 것: 시트 34평의 전용면적/)
+    expect(r.row.매칭검증사유).toMatch(/확인할 것: \[미확정/)
     expect(r.trades.every((t) => t.API단지명 === '봉선동제일풍경채엘리트파크')).toBe(true)
     expect(appImportRows([r], landmarks)).toEqual([])
   })
