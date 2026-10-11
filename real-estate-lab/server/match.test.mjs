@@ -62,6 +62,18 @@ describe('단지명 변형', () => {
       names: ['새뜸마을10단지(더샵힐스테이트)'],
     })
   })
+  it('API명이 법정동으로 시작해도 같은 법정동이면 exact (봉선동제일풍경채엘리트파크)', () => {
+    const items = [
+      it_('봉선동제일풍경채엘리트파크', '봉선동'),
+      it_('봉선동제일풍경채', '봉선동'),
+      it_('봉선한국아델리움', '봉선동'),
+    ]
+    expect(matchName({ name: '봉선제일풍경채엘리트파크' }, items)).toEqual({ level: 'exact', names: ['봉선동제일풍경채엘리트파크'] })
+    // 엘리트파크가 아닌 '봉선제일풍경채'는 별개 단지로 정확히 구분
+    expect(matchName({ name: '봉선제일풍경채' }, items)).toEqual({ level: 'exact', names: ['봉선동제일풍경채'] })
+    // 다른 법정동이면 '동' 제거 규칙을 쓰지 않는다
+    expect(matchName({ name: '봉선제일풍경채엘리트파크' }, [it_('봉선동제일풍경채엘리트파크', '주월동')]).level).not.toBe('exact')
+  })
   it('apiNames 를 적으면 그 이름만 쓴다', () => {
     expect(matchName({ name: '해운대자이2차', apiNames: ['해운대자이2단지'] }, [it_('해운대자이2단지'), it_('해운대자이2차')])).toEqual({ level: 'alias', names: ['해운대자이2단지'] })
   })

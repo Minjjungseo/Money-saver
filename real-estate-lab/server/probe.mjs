@@ -5,6 +5,8 @@
  *   npm run molit:probe -- --lawd 29155,12270 --ym 202606,202609
  *   npm run molit:probe -- --lawd 12270 --compare 11650       (정상 조회되던 코드와 비교)
  *
+ *   npm run molit:probe -- --lawd 12270 --last 24             (최근 24개월 월별 건수만, 지역코드당 48회 호출)
+ *
  * --lawd / --compare / --ym 은 쉼표로 여러 개를 줄 수 있다.
  * 실제 전송하는 엔드포인트와 파라미터를 함께 보여 준다. 인증키 값은 출력하지 않는다(길이·상태만).
  */
@@ -37,6 +39,32 @@ console.log(`  매매 엔드포인트: ${ENDPOINTS.sale}`)
 console.log(`  전월세 엔드포인트: ${ENDPOINTS.rent}`)
 console.log('  파라미터: serviceKey, LAWD_CD(5자리), DEAL_YMD(YYYYMM), pageNo, numOfRows')
 console.log(`  인증키: ${key.length}자, ${/%[0-9A-Fa-f]{2}/.test(key) ? '인코딩된 상태(⚠ 이중 인코딩 위험)' : '디코딩된 상태'} → 전송 시 URL 인코딩 1회`)
+
+// --last N: 월별 건수표 (numOfRows=1 로 totalCount 만 확인)
+const last = Number(arg('last', 0))
+if (last > 0) {
+  for (const code of codes) {
+    console.log(`\n■ ${code} 최근 ${last}개월 월별 건수 (매매 / 전월세 / 응답 지역코드)`)
+    let empty = 0
+    for (const ym of recentMonths(last)) {
+      const cells = []
+      for (const kind of ['sale', 'rent']) {
+        const qs = new URLSearchParams({ serviceKey: key, LAWD_CD: code, DEAL_YMD: ym, pageNo: '1', numOfRows: '1' })
+        try {
+          const xml = await (await fetch(`${ENDPOINTS[kind]}?${qs}`, { signal: AbortSignal.timeout(30_000) })).text()
+          const p = parseResponse(xml)
+          cells.push(p.ok ? { n: p.totalCount, sgg: p.items[0] ? normalizeItem(kind, p.items[0]).sggCd : '' } : { n: `오류 ${scrub(p.error)}`, sgg: '' })
+        } catch (e) {
+          cells.push({ n: `실패 ${scrub(e.message)}`, sgg: '' })
+        }
+      }
+      if (cells.every((c) => c.n === 0)) empty++
+      console.log(`  ${ym}  매매 ${String(cells[0].n).padStart(5)}  전월세 ${String(cells[1].n).padStart(5)}  ${[...new Set(cells.map((c) => c.sgg).filter(Boolean))].join(',')}`)
+    }
+    console.log(empty === last ? `  → ${last}개월 모두 0건: 이 코드로는 조회되지 않음` : `  → 0건인 달 ${empty}개 / ${last}개`)
+  }
+  process.exit(0)
+}
 
 let row = 0
 for (const code of codes) for (const ym of yms) {

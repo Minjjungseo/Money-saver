@@ -52,8 +52,21 @@ export function nameKeys(s) {
   return [...keys].filter(Boolean)
 }
 
-const sameName = (a, b) => {
-  const kb = nameKeys(b)
+/**
+ * API 단지명이 자기 법정동 이름으로 시작하면("봉선동제일풍경채엘리트파크", 법정동 봉선동)
+ * '동'을 뺀 형태(봉선제일풍경채엘리트파크)도 비교 키로 쓴다. 같은 법정동일 때만 적용한다.
+ */
+export function apiNameKeys(aptName, dong) {
+  const keys = new Set(nameKeys(aptName))
+  const d = baseNorm(dong ?? '')
+  if (d.length >= 2 && d.endsWith('동')) {
+    for (const k of [...keys]) if (k.startsWith(d) && k.length > d.length) keys.add(d.slice(0, -1) + k.slice(d.length))
+  }
+  return [...keys]
+}
+
+const sameName = (a, b, bDong = null) => {
+  const kb = apiNameKeys(b, bDong)
   return nameKeys(a).some((k) => kb.includes(k))
 }
 const containsName = (a, b) => {
@@ -80,7 +93,7 @@ export function matchName(landmark, items) {
     return hits.length ? { level: 'alias', names: uniq(hits) } : { level: 'none', names: [] }
   }
   const dongPrefix = /^(\S+동)\s+(.+)$/.exec(String(landmark.name).trim())
-  const exact = list.filter((x) => sameName(landmark.name, x.aptName) || (dongPrefix && x.dong === dongPrefix[1] && sameName(dongPrefix[2], x.aptName)))
+  const exact = list.filter((x) => sameName(landmark.name, x.aptName, x.dong) || (dongPrefix && x.dong === dongPrefix[1] && sameName(dongPrefix[2], x.aptName)))
   if (exact.length) return { level: 'exact', names: uniq(exact) }
   const partial = list.filter((x) => containsName(landmark.name, x.aptName))
   if (partial.length) return { level: 'partial', names: uniq(partial) }

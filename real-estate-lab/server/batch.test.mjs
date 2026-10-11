@@ -4,7 +4,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createServer } from 'node:http'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { appImportRows, lookupLandmark, runBatch, toCsv } from './batch.mjs'
@@ -217,5 +217,25 @@ describe('검토 리포트 (캐시만 읽음)', () => {
       ['해운대자이2단지', '', '2013'],
       ['해운대자이2차1단지', 'partial', '2018'],
     ])
+  })
+})
+
+describe('봉선제일풍경채엘리트파크 (12270, 테스트용 가짜 거래)', () => {
+  it('API명 봉선동제일풍경채엘리트파크와 일치하고, 면적 미확인이라 정상이 아니며 앱 가져오기에서 빠진다', async () => {
+    const { landmarks } = JSON.parse(readFileSync(new URL('./landmarks.json', import.meta.url), 'utf8'))
+    const bs = landmarks.find((l) => l.name === '봉선제일풍경채엘리트파크')
+    expect(bs.lawdCd).toBe('12270')
+    const b = { aptName: '봉선동제일풍경채엘리트파크', dong: '봉선동', sggCd: '12270', buildYear: 2017 }
+    const other = { aptName: '봉선동제일풍경채', dong: '봉선동', sggCd: '12270' }
+    const f = fakeFetcher({
+      'sale-202609': [sale('202609', '10', 8e8, { ...b, area: 84.97 }), sale('202609', '12', 9e8, { ...other, area: 84.9 })],
+      'rent-202609': [rent('202609', '18', 5e8, { ...b, area: 84.96 })],
+    })
+    const r = await lookupLandmark(bs, { getMonth: async (k, lawd, ym) => ({ items: (await f(k, lawd, ym)).items.map((it) => ({ ...it, sggCd: '12270' })) }), now: NOW })
+    expect(r.row).toMatchObject({ 지역코드: '12270', API단지명: '봉선동제일풍경채엘리트파크', 단지매칭: '일치', '매매가(억)': 8, '전세가(억)': 5 })
+    expect(r.row.상태).toBe('검증 필요')
+    expect(r.row.매칭검증사유).toMatch(/확인할 것: 시트 34평의 전용면적/)
+    expect(r.trades.every((t) => t.API단지명 === '봉선동제일풍경채엘리트파크')).toBe(true)
+    expect(appImportRows([r], landmarks)).toEqual([])
   })
 })

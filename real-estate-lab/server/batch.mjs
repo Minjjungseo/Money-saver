@@ -18,7 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ROOT, fetchMonth, loadServiceKey, recentMonths } from './molit.mjs'
-import { RETIRED_SIDO_PREFIX } from './lawd.mjs'
+import { retiredCodeNote } from './lawd.mjs'
 import { chooseAreaType, jeonseRatio, matchName, pickLatestJeonse, pickLatestSale, similarNames, typeWindow } from './match.mjs'
 
 export const PERIODS = [6, 12, 24]
@@ -89,7 +89,7 @@ export async function lookupLandmark(lm, { getMonth, now = new Date() }) {
     row.상태 = '지역코드 확인 필요'
     row.매칭검증사유 = regionAll.length
       ? `요청 ${lm.lawdCd} / 응답 지역코드 대부분 ${others}`
-      : `지역코드 ${lm.lawdCd} 로 24개월간 이 시군구 전체 거래가 0건${RETIRED_SIDO_PREFIX[lm.lawdCd.slice(0, 2)] ? ` (${RETIRED_SIDO_PREFIX[lm.lawdCd.slice(0, 2)]} → 새 코드를 공식 법정동코드로 확인 후 lawdCd 교체)` : ''} → npm run molit:probe -- --lawd ${lm.lawdCd} 로 응답 원문 확인`
+      : `지역코드 ${lm.lawdCd} 로 24개월간 이 시군구 전체 거래가 0건${retiredCodeNote(lm.lawdCd) ? ` (${retiredCodeNote(lm.lawdCd)} → 새 코드를 공식 법정동코드로 확인 후 lawdCd 교체)` : ''} → npm run molit:probe -- --lawd ${lm.lawdCd} 로 응답 원문 확인`
     return { row, trades: [] }
   }
 

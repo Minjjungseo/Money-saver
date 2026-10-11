@@ -1517,9 +1517,10 @@
    "pyeongLabel": null,
    "isLandmark": true,
    "regionNote": null,
-   "lawdCd": "29155",
+   "lawdCd": "12270",
    "top20": 17,
-   "checkNote": "지역코드 29155(광주 남구)로 거래 0건 → npm run molit:probe -- --lawd 29155 --compare 29140 로 응답 원문 확인"
+   "checkNote": "시트 34평의 전용면적 타입을 공식 자료(건축물대장 전유부 또는 2014년 입주자모집공고)로 확인 후 areaMin/areaMax·verified 기입. API 단지명 봉선동제일풍경채엘리트파크의 지번·준공연도도 건축물대장과 대조",
+   "lawdNote": "2026.7.1 전남광주통합특별시 출범으로 29155 폐지 → 12270. 국토부 API 확인(2026-10-11, 사용자 PC): 12270 응답 sggCd 12270·봉선동 포함, 29155 0건"
   },
   {
    "key": "광주/광산구|수완대방노블랜드6차(34\")",
