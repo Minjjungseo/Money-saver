@@ -93,7 +93,17 @@ export function matchName(landmark, items) {
     return hits.length ? { level: 'alias', names: uniq(hits) } : { level: 'none', names: [] }
   }
   const dongPrefix = /^(\S+동)\s+(.+)$/.exec(String(landmark.name).trim())
-  const exact = list.filter((x) => sameName(landmark.name, x.aptName, x.dong) || (dongPrefix && x.dong === dongPrefix[1] && sameName(dongPrefix[2], x.aptName)))
+  // 시트 이름이 법정동 이름(동 제외)으로 시작하고 나머지가 API 이름과 같으면 exact (광안쌍용예가디오션 ↔ 광안동 '쌍용예가디오션')
+  const dongStem = (x) => {
+    const d = baseNorm(x.dong ?? '')
+    if (!(d.length >= 3 && d.endsWith('동'))) return false
+    const stem = d.slice(0, -1)
+    const t = normName(landmark.name)
+    return t.startsWith(stem) && t.length > stem.length + 2 && apiNameKeys(x.aptName, x.dong).includes(t.slice(stem.length))
+  }
+  const exact = list.filter(
+    (x) => sameName(landmark.name, x.aptName, x.dong) || (dongPrefix && x.dong === dongPrefix[1] && sameName(dongPrefix[2], x.aptName)) || dongStem(x),
+  )
   if (exact.length) return { level: 'exact', names: uniq(exact) }
   const partial = list.filter((x) => containsName(landmark.name, x.aptName))
   if (partial.length) return { level: 'partial', names: uniq(partial) }

@@ -40,7 +40,7 @@ type Entry = Record<string, unknown> & { key: string }
 const prev = new Map<string, Entry>()
 if (existsSync(out)) for (const e of JSON.parse(readFileSync(out, 'utf8')).landmarks as Entry[]) prev.set(e.key, e)
 
-const KEEP = ['lawdCd', 'lawdNote', 'apiNames', 'areaMin', 'areaMax', 'top20', 'memo', 'checkNote', 'verified'] as const
+const KEEP = ['lawdCd', 'lawdNote', 'apiNames', 'blocks', 'areaMin', 'areaMax', 'top20', 'memo', 'checkNote', 'nameCheck', 'verified'] as const
 const landmarks: Entry[] = rows.map((row) => {
   const apt = data.apartments.find((a) => a.regionId === row.regionId && row.name.startsWith(a.name))!
   const unit = data.units.find((u) => u.apartmentId === apt.id && row.name.includes(`(${u.pyeong ?? ''}`)) ?? data.units.find((u) => u.apartmentId === apt.id)

@@ -102,6 +102,10 @@ export function normalizeItem(kind, o) {
     // 단지 식별 보조 (응답에 있을 때만): 단지 일련번호, 도로명
     aptSeq: pick(o, 'aptSeq', '단지일련번호'),
     roadNm: pick(o, 'roadNm', '도로명'),
+    aptDong: pick(o, 'aptDong', '동'),
+    umdCd: pick(o, 'umdCd', '법정동읍면동코드'),
+    rgstDate: pick(o, 'rgstDate', '등기일자'),
+    contractTerm: pick(o, 'contractTerm', '계약기간'),
   }
   if (kind === 'sale') {
     const cancel = pick(o, 'cdealType', '해제여부')

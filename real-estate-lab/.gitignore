@@ -4,3 +4,4 @@ dist
 dist-single
 server/.cache
 server/output
+server/data
